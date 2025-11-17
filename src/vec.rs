@@ -2685,7 +2685,7 @@ mod tests {
 
     #[test]
     fn test_from_iterator_map() {
-        let numbers = vec![1, 2, 3, 4, 5];
+        let numbers = [1, 2, 3, 4, 5];
         let doubled: TruenoVec<i32> = numbers.iter().map(|x| x * 2).collect();
 
         assert_eq!(doubled.len(), 5);
@@ -2978,7 +2978,7 @@ mod tests {
         vec.push(2);
 
         // Use mutable slice methods through DerefMut
-        vec.sort();
+        vec.sort_unstable();
         assert_eq!(vec.as_slice(), &[1, 2, 3, 4]);
     }
 
@@ -3026,7 +3026,7 @@ mod tests {
         vec.push(3);
 
         // Use iter_mut through DerefMut
-        for elem in vec.iter_mut() {
+        for elem in &mut vec {
             *elem *= 2;
         }
 
@@ -3085,7 +3085,7 @@ mod tests {
 
         assert_eq!(process(&vec), 6);
         assert_eq!(process(vec![1, 2, 3]), 6);
-        assert_eq!(process(&[1, 2, 3]), 6);
+        assert_eq!(process([1, 2, 3]), 6);
     }
 
     #[test]
@@ -3199,7 +3199,7 @@ mod tests {
     #[test]
     fn test_as_mut_sorting() {
         fn sort_slice<T: AsMut<[i32]>>(mut data: T) {
-            data.as_mut().sort();
+            data.as_mut().sort_unstable();
         }
 
         let mut vec = TruenoVec::new();
@@ -3342,7 +3342,7 @@ mod tests {
         let mut vec = TruenoVec::from(vec![5, 2, 8, 1, 9, 3]);
 
         // Sort through DerefMut
-        vec.sort();
+        vec.sort_unstable();
         assert_eq!(vec.as_slice(), &[1, 2, 3, 5, 8, 9]);
 
         // Reverse
@@ -3382,7 +3382,7 @@ mod tests {
         vec2.push(3);
 
         assert!(vec1 < vec2);
-        assert!(!(vec2 < vec1));
+        assert!((vec2 >= vec1));
     }
 
     #[test]
@@ -3396,7 +3396,7 @@ mod tests {
         vec2.push(4);
 
         assert!(vec1 > vec2);
-        assert!(!(vec2 > vec1));
+        assert!((vec2 <= vec1));
     }
 
     #[test]
@@ -3415,7 +3415,7 @@ mod tests {
 
         assert!(vec1 <= vec2); // Equal
         assert!(vec1 <= vec3); // Less
-        assert!(!(vec3 <= vec1));
+        assert!((vec3 > vec1));
     }
 
     #[test]
@@ -3434,7 +3434,7 @@ mod tests {
 
         assert!(vec1 >= vec2); // Equal
         assert!(vec1 >= vec3); // Greater
-        assert!(!(vec3 >= vec1));
+        assert!((vec3 < vec1));
     }
 
     #[test]
@@ -3451,7 +3451,7 @@ mod tests {
         // Shorter vector is less
         assert!(vec2 < vec1);
         assert!(vec1 > vec2);
-        assert!(!(vec1 < vec2));
+        assert!((vec1 >= vec2));
     }
 
     #[test]
@@ -3459,8 +3459,8 @@ mod tests {
         let vec1: TruenoVec<i32> = TruenoVec::new();
         let vec2: TruenoVec<i32> = TruenoVec::new();
 
-        assert!(!(vec1 < vec2));
-        assert!(!(vec1 > vec2));
+        assert!((vec1 >= vec2));
+        assert!((vec1 <= vec2));
         assert!(vec1 <= vec2);
         assert!(vec1 >= vec2);
     }
@@ -3472,7 +3472,7 @@ mod tests {
         vec2.push(1);
 
         assert!(vec1 < vec2);
-        assert!(!(vec2 < vec1));
+        assert!((vec2 >= vec1));
     }
 
     #[test]
@@ -3530,7 +3530,7 @@ mod tests {
         let vec2 = TruenoVec::from(vec![1, 2, 3]);
         let vec3 = TruenoVec::from(vec![2, 1, 3]);
 
-        let mut vecs = vec![vec1.clone(), vec2.clone(), vec3.clone()];
+        let mut vecs = [vec1.clone(), vec2.clone(), vec3.clone()];
         vecs.sort();
 
         assert_eq!(vecs[0], vec2);
@@ -3586,8 +3586,8 @@ mod tests {
         let vec3 = TruenoVec::from(vec![1, 2, 2]);
 
         assert_eq!(vec1.clone().min(vec2.clone()), vec1);
-        assert_eq!(vec1.clone().max(vec3.clone()), vec1);
-        assert_eq!(vec2.clone().max(vec1.clone()), vec2);
+        assert_eq!(vec1.clone().max(vec3), vec1);
+        assert_eq!(vec2.clone().max(vec1), vec2);
     }
 
     #[test]
@@ -3785,12 +3785,10 @@ mod tests {
 
     #[test]
     fn test_sorting_collection_of_vectors() {
-        let mut vecs = vec![
-            TruenoVec::from(vec![3, 2, 1]),
+        let mut vecs = [TruenoVec::from(vec![3, 2, 1]),
             TruenoVec::from(vec![1, 2, 3]),
             TruenoVec::from(vec![2, 1, 3]),
-            TruenoVec::from(vec![1]),
-        ];
+            TruenoVec::from(vec![1])];
 
         vecs.sort();
 
@@ -3833,37 +3831,37 @@ mod tests {
     #[test]
     fn test_display_empty() {
         let vec: TruenoVec<i32> = TruenoVec::new();
-        assert_eq!(format!("{}", vec), "[]");
+        assert_eq!(format!("{vec}"), "[]");
     }
 
     #[test]
     fn test_display_single_element() {
         let vec = TruenoVec::from(vec![42]);
-        assert_eq!(format!("{}", vec), "[42]");
+        assert_eq!(format!("{vec}"), "[42]");
     }
 
     #[test]
     fn test_display_multiple_elements() {
         let vec = TruenoVec::from(vec![1, 2, 3, 4, 5]);
-        assert_eq!(format!("{}", vec), "[1, 2, 3, 4, 5]");
+        assert_eq!(format!("{vec}"), "[1, 2, 3, 4, 5]");
     }
 
     #[test]
     fn test_display_strings() {
         let vec = TruenoVec::from(vec!["hello", "world"]);
-        assert_eq!(format!("{}", vec), "[hello, world]");
+        assert_eq!(format!("{vec}"), "[hello, world]");
     }
 
     #[test]
     fn test_display_negative_numbers() {
         let vec = TruenoVec::from(vec![-1, -2, -3]);
-        assert_eq!(format!("{}", vec), "[-1, -2, -3]");
+        assert_eq!(format!("{vec}"), "[-1, -2, -3]");
     }
 
     #[test]
     fn test_display_chars() {
         let vec = TruenoVec::from(vec!['a', 'b', 'c']);
-        assert_eq!(format!("{}", vec), "[a, b, c]");
+        assert_eq!(format!("{vec}"), "[a, b, c]");
     }
 
     #[test]
@@ -3871,28 +3869,28 @@ mod tests {
         let mut vec = TruenoVec::new();
         vec.push(1);
         vec.push(2);
-        assert_eq!(format!("{}", vec), "[1, 2]");
+        assert_eq!(format!("{vec}"), "[1, 2]");
     }
 
     #[test]
     fn test_display_after_pop() {
         let mut vec = TruenoVec::from(vec![1, 2, 3]);
         vec.pop();
-        assert_eq!(format!("{}", vec), "[1, 2]");
+        assert_eq!(format!("{vec}"), "[1, 2]");
     }
 
     #[test]
     fn test_display_floating_point() {
         let vec = TruenoVec::from(vec![1.5, 2.7, 3.9]);
-        assert_eq!(format!("{}", vec), "[1.5, 2.7, 3.9]");
+        assert_eq!(format!("{vec}"), "[1.5, 2.7, 3.9]");
     }
 
     #[test]
     fn test_display_with_println() {
         // Verify Display works with println! and format! macros
         let vec = TruenoVec::from(vec![1, 2, 3]);
-        let display_output = format!("{}", vec);
-        let debug_output = format!("{:?}", vec);
+        let display_output = format!("{vec}");
+        let debug_output = format!("{vec:?}");
 
         // Display should produce clean output
         assert_eq!(display_output, "[1, 2, 3]");
@@ -3904,7 +3902,7 @@ mod tests {
     fn test_display_long_vector() {
         let vec: TruenoVec<i32> = (1..=20).collect();
         assert_eq!(
-            format!("{}", vec),
+            format!("{vec}"),
             "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]"
         );
     }
@@ -3915,7 +3913,7 @@ mod tests {
         let std_vec = vec![10, 20, 30];
 
         // Both should format the same way
-        assert_eq!(format!("{}", trueno_vec), format!("{:?}", std_vec));
+        assert_eq!(format!("{trueno_vec}"), format!("{:?}", std_vec));
     }
 
     // Phase 3.3: Borrow Trait Tests
@@ -4428,7 +4426,7 @@ mod property_tests {
         #[test]
         fn prop_from_iterator_matches_vec(elements in prop::collection::vec(any::<i32>(), 0..100)) {
             let trueno_vec: TruenoVec<i32> = elements.iter().copied().collect();
-            let std_vec: Vec<i32> = elements.iter().copied().collect();
+            let std_vec: Vec<i32> = elements;
 
             prop_assert_eq!(trueno_vec.len(), std_vec.len());
             for (i, &expected_val) in std_vec.iter().enumerate() {
@@ -4633,7 +4631,7 @@ mod property_tests {
     proptest! {
         #[test]
         fn prop_deref_equals_as_slice(elements in prop::collection::vec(any::<i32>(), 0..100)) {
-            let vec = TruenoVec::from(elements.clone());
+            let vec = TruenoVec::from(elements);
             let via_deref: &[i32] = &vec;
             let via_as_slice = vec.as_slice();
 
@@ -4647,7 +4645,7 @@ mod property_tests {
     proptest! {
         #[test]
         fn prop_as_ref_equals_as_slice(elements in prop::collection::vec(any::<i32>(), 0..100)) {
-            let vec = TruenoVec::from(elements.clone());
+            let vec = TruenoVec::from(elements);
             let via_as_ref: &[i32] = vec.as_ref();
             let via_as_slice = vec.as_slice();
 
@@ -4679,11 +4677,11 @@ mod property_tests {
         #[test]
         fn prop_deref_mut_sorting(elements in prop::collection::vec(any::<i32>(), 0..100)) {
             let mut vec = TruenoVec::from(elements.clone());
-            let mut std_vec = elements.clone();
+            let mut std_vec = elements;
 
             // Sort using DerefMut
-            vec.sort();
-            std_vec.sort();
+            vec.sort_unstable();
+            std_vec.sort_unstable();
 
             prop_assert_eq!(vec.len(), std_vec.len());
             for i in 0..vec.len() {
@@ -4697,7 +4695,7 @@ mod property_tests {
         #[test]
         fn prop_deref_mut_reverse(elements in prop::collection::vec(any::<i32>(), 0..100)) {
             let mut vec = TruenoVec::from(elements.clone());
-            let mut std_vec = elements.clone();
+            let mut std_vec = elements;
 
             vec.reverse();
             std_vec.reverse();
@@ -4736,7 +4734,7 @@ mod property_tests {
             }
 
             let mut vec = TruenoVec::from(elements.clone());
-            let mut std_vec = elements.clone();
+            let mut std_vec = elements;
 
             double_via_as_mut(&mut vec);
             double_via_as_mut(&mut std_vec);
@@ -4753,7 +4751,7 @@ mod property_tests {
         #[test]
         fn prop_deref_function_param(elements in prop::collection::vec(any::<i32>(), 0..100)) {
             fn process_slice(s: &[i32]) -> i32 {
-                s.iter().map(|x| x.wrapping_mul(2)).fold(0i32, |acc, x| acc.wrapping_add(x))
+                s.iter().map(|x| x.wrapping_mul(2)).fold(0i32, i32::wrapping_add)
             }
 
             let vec = TruenoVec::from(elements.clone());
@@ -4823,7 +4821,7 @@ mod property_tests {
     proptest! {
         #[test]
         fn prop_as_ref_self_consistency(elements in prop::collection::vec(any::<i32>(), 0..100)) {
-            let vec = TruenoVec::from(elements.clone());
+            let vec = TruenoVec::from(elements);
             let vec_ref: &TruenoVec<i32> = vec.as_ref();
 
             prop_assert_eq!(vec.len(), vec_ref.len());
@@ -5042,7 +5040,7 @@ mod property_tests {
 
             // Verify that we can retrieve values
             // For duplicates, the last inserted value should be present
-            for (_i, key_vec) in keys.iter().enumerate() {
+            for key_vec in &keys {
                 let key = TruenoVec::from(key_vec.clone());
 
                 // Find the last occurrence of this key in the original list
@@ -5110,8 +5108,8 @@ mod property_tests {
         #[test]
         fn prop_display_format_consistency(elements in prop::collection::vec(any::<i32>(), 0..20)) {
             let vec = TruenoVec::from(elements.clone());
-            let display_output = format!("{}", vec);
-            let expected_output = format!("{:?}", elements);
+            let display_output = format!("{vec}");
+            let expected_output = format!("{elements:?}");
 
             // Display should match std::Vec's Debug output
             prop_assert_eq!(display_output, expected_output);
@@ -5202,11 +5200,11 @@ mod property_tests {
         #[test]
         fn prop_display_respects_element_display(elements in prop::collection::vec(any::<u32>(), 0..15)) {
             let vec = TruenoVec::from(elements.clone());
-            let display_str = format!("{}", vec);
+            let display_str = format!("{vec}");
 
             // Display should contain each element's string representation
             for elem in &elements {
-                let elem_str = format!("{}", elem);
+                let elem_str = format!("{elem}");
                 prop_assert!(display_str.contains(&elem_str));
             }
         }
