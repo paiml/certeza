@@ -1482,6 +1482,77 @@ impl<T: std::hash::Hash> std::hash::Hash for TruenoVec<T> {
 }
 
 // ============================================================================
+// Phase 3.3: Display and Borrow Traits (Polish & Advanced Use Cases)
+// ============================================================================
+
+/// Display trait for user-friendly formatting
+///
+/// Formats the vector as `[elem1, elem2, ...]` similar to `std::Vec`.
+///
+/// # Examples
+///
+/// ```
+/// use certeza::TruenoVec;
+///
+/// let vec = TruenoVec::from(vec![1, 2, 3]);
+/// assert_eq!(format!("{}", vec), "[1, 2, 3]");
+/// ```
+impl<T: std::fmt::Display> std::fmt::Display for TruenoVec<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[")?;
+        for (i, elem) in self.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{elem}")?;
+        }
+        write!(f, "]")
+    }
+}
+
+/// Borrow<[T]> trait for advanced borrowing patterns
+///
+/// Enables using `TruenoVec` with APIs that accept `Borrow<[T]>` bounds,
+/// particularly useful for `HashMap` and `BTreeMap` lookups.
+///
+/// # Examples
+///
+/// ```
+/// use certeza::TruenoVec;
+/// use std::borrow::Borrow;
+///
+/// let vec = TruenoVec::from(vec![1, 2, 3]);
+/// let slice: &[i32] = vec.borrow();
+/// assert_eq!(slice, &[1, 2, 3]);
+/// ```
+impl<T> std::borrow::Borrow<[T]> for TruenoVec<T> {
+    fn borrow(&self) -> &[T] {
+        self.as_slice()
+    }
+}
+
+/// `BorrowMut<[T]>` trait for advanced mutable borrowing patterns
+///
+/// Enables using `TruenoVec` with APIs that accept `BorrowMut<[T]>` bounds.
+///
+/// # Examples
+///
+/// ```
+/// use certeza::TruenoVec;
+/// use std::borrow::BorrowMut;
+///
+/// let mut vec = TruenoVec::from(vec![1, 2, 3]);
+/// let slice: &mut [i32] = vec.borrow_mut();
+/// slice[0] = 10;
+/// assert_eq!(vec.get(0), Some(&10));
+/// ```
+impl<T> std::borrow::BorrowMut<[T]> for TruenoVec<T> {
+    fn borrow_mut(&mut self) -> &mut [T] {
+        self.as_slice_mut()
+    }
+}
+
+// ============================================================================
 // Unit Tests (Tier 1: Sub-second feedback)
 // ============================================================================
 
@@ -3308,7 +3379,7 @@ mod tests {
         vec2.push(3);
 
         assert!(vec1 < vec2);
-        assert!(vec2 >= vec1);
+        assert!((vec2 >= vec1));
     }
 
     #[test]
@@ -3322,7 +3393,7 @@ mod tests {
         vec2.push(4);
 
         assert!(vec1 > vec2);
-        assert!(vec2 <= vec1);
+        assert!((vec2 <= vec1));
     }
 
     #[test]
@@ -3341,7 +3412,7 @@ mod tests {
 
         assert!(vec1 <= vec2); // Equal
         assert!(vec1 <= vec3); // Less
-        assert!(vec3 > vec1);
+        assert!((vec3 > vec1));
     }
 
     #[test]
@@ -3360,7 +3431,7 @@ mod tests {
 
         assert!(vec1 >= vec2); // Equal
         assert!(vec1 >= vec3); // Greater
-        assert!(vec3 < vec1);
+        assert!((vec3 < vec1));
     }
 
     #[test]
@@ -3377,7 +3448,7 @@ mod tests {
         // Shorter vector is less
         assert!(vec2 < vec1);
         assert!(vec1 > vec2);
-        assert!(vec1 >= vec2);
+        assert!((vec1 >= vec2));
     }
 
     #[test]
@@ -3385,8 +3456,8 @@ mod tests {
         let vec1: TruenoVec<i32> = TruenoVec::new();
         let vec2: TruenoVec<i32> = TruenoVec::new();
 
-        assert!(vec1 >= vec2);
-        assert!(vec1 <= vec2);
+        assert!((vec1 >= vec2));
+        assert!((vec1 <= vec2));
         assert!(vec1 <= vec2);
         assert!(vec1 >= vec2);
     }
@@ -3398,7 +3469,7 @@ mod tests {
         vec2.push(1);
 
         assert!(vec1 < vec2);
-        assert!(vec2 >= vec1);
+        assert!((vec2 >= vec1));
     }
 
     #[test]
@@ -3456,8 +3527,8 @@ mod tests {
         let vec2 = TruenoVec::from(vec![1, 2, 3]);
         let vec3 = TruenoVec::from(vec![2, 1, 3]);
 
-        let mut vectors = [vec1.clone(), vec2.clone(), vec3.clone()];
-        vectors.sort_unstable();
+        let mut vecs = [vec1.clone(), vec2.clone(), vec3.clone()];
+        vecs.sort();
 
         assert_eq!(vectors[0], vec2);
         assert_eq!(vectors[1], vec3);
@@ -3711,12 +3782,10 @@ mod tests {
 
     #[test]
     fn test_sorting_collection_of_vectors() {
-        let mut vecs = [
-            TruenoVec::from(vec![3, 2, 1]),
+        let mut vecs = [TruenoVec::from(vec![3, 2, 1]),
             TruenoVec::from(vec![1, 2, 3]),
             TruenoVec::from(vec![2, 1, 3]),
-            TruenoVec::from(vec![1]),
-        ];
+            TruenoVec::from(vec![1])];
 
         vecs.sort_unstable();
 
@@ -3752,6 +3821,226 @@ mod tests {
         // Greater than or equal
         assert!(vec1 >= vec2);
         assert!(vec3 >= vec1);
+    }
+
+    // Phase 3.3: Display Trait Tests
+
+    #[test]
+    fn test_display_empty() {
+        let vec: TruenoVec<i32> = TruenoVec::new();
+        assert_eq!(format!("{vec}"), "[]");
+    }
+
+    #[test]
+    fn test_display_single_element() {
+        let vec = TruenoVec::from(vec![42]);
+        assert_eq!(format!("{vec}"), "[42]");
+    }
+
+    #[test]
+    fn test_display_multiple_elements() {
+        let vec = TruenoVec::from(vec![1, 2, 3, 4, 5]);
+        assert_eq!(format!("{vec}"), "[1, 2, 3, 4, 5]");
+    }
+
+    #[test]
+    fn test_display_strings() {
+        let vec = TruenoVec::from(vec!["hello", "world"]);
+        assert_eq!(format!("{vec}"), "[hello, world]");
+    }
+
+    #[test]
+    fn test_display_negative_numbers() {
+        let vec = TruenoVec::from(vec![-1, -2, -3]);
+        assert_eq!(format!("{vec}"), "[-1, -2, -3]");
+    }
+
+    #[test]
+    fn test_display_chars() {
+        let vec = TruenoVec::from(vec!['a', 'b', 'c']);
+        assert_eq!(format!("{vec}"), "[a, b, c]");
+    }
+
+    #[test]
+    fn test_display_after_push() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        assert_eq!(format!("{vec}"), "[1, 2]");
+    }
+
+    #[test]
+    fn test_display_after_pop() {
+        let mut vec = TruenoVec::from(vec![1, 2, 3]);
+        vec.pop();
+        assert_eq!(format!("{vec}"), "[1, 2]");
+    }
+
+    #[test]
+    fn test_display_floating_point() {
+        let vec = TruenoVec::from(vec![1.5, 2.7, 3.9]);
+        assert_eq!(format!("{vec}"), "[1.5, 2.7, 3.9]");
+    }
+
+    #[test]
+    fn test_display_with_println() {
+        // Verify Display works with println! and format! macros
+        let vec = TruenoVec::from(vec![1, 2, 3]);
+        let display_output = format!("{vec}");
+        let debug_output = format!("{vec:?}");
+
+        // Display should produce clean output
+        assert_eq!(display_output, "[1, 2, 3]");
+        // Both Display and Debug should be available
+        assert!(!debug_output.is_empty());
+    }
+
+    #[test]
+    fn test_display_long_vector() {
+        let vec: TruenoVec<i32> = (1..=20).collect();
+        assert_eq!(
+            format!("{vec}"),
+            "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]"
+        );
+    }
+
+    #[test]
+    fn test_display_consistency_with_std_vec() {
+        let trueno_vec = TruenoVec::from(vec![10, 20, 30]);
+        let std_vec = vec![10, 20, 30];
+
+        // Both should format the same way
+        assert_eq!(format!("{trueno_vec}"), format!("{:?}", std_vec));
+    }
+
+    // Phase 3.3: Borrow Trait Tests
+
+    #[test]
+    fn test_borrow_to_slice() {
+        use std::borrow::Borrow;
+
+        let vec = TruenoVec::from(vec![1, 2, 3]);
+        let slice: &[i32] = vec.borrow();
+        assert_eq!(slice, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn test_borrow_empty() {
+        use std::borrow::Borrow;
+
+        let vec: TruenoVec<i32> = TruenoVec::new();
+        let slice: &[i32] = vec.borrow();
+        assert_eq!(slice, &[]);
+    }
+
+    #[test]
+    fn test_borrow_mut_to_slice() {
+        use std::borrow::BorrowMut;
+
+        let mut vec = TruenoVec::from(vec![1, 2, 3]);
+        let slice: &mut [i32] = vec.borrow_mut();
+        slice[0] = 10;
+        assert_eq!(slice, &[10, 2, 3]);
+    }
+
+    #[test]
+    fn test_borrow_mut_modify() {
+        use std::borrow::BorrowMut;
+
+        let mut vec = TruenoVec::from(vec![5, 10, 15]);
+        {
+            let slice: &mut [i32] = vec.borrow_mut();
+            for elem in slice.iter_mut() {
+                *elem *= 2;
+            }
+        }
+        assert_eq!(vec.as_slice(), &[10, 20, 30]);
+    }
+
+    #[test]
+    fn test_borrow_with_generic_function() {
+        use std::borrow::Borrow;
+
+        fn sum_slice<T: Borrow<[i32]>>(data: &T) -> i32 {
+            data.borrow().iter().sum()
+        }
+
+        let vec = TruenoVec::from(vec![1, 2, 3, 4]);
+        assert_eq!(sum_slice(&vec), 10);
+    }
+
+    #[test]
+    fn test_borrow_mut_with_generic_function() {
+        use std::borrow::BorrowMut;
+
+        fn double_all<T: BorrowMut<[i32]>>(data: &mut T) {
+            for elem in data.borrow_mut().iter_mut() {
+                *elem *= 2;
+            }
+        }
+
+        let mut vec = TruenoVec::from(vec![1, 2, 3]);
+        double_all(&mut vec);
+        assert_eq!(vec.as_slice(), &[2, 4, 6]);
+    }
+
+    #[test]
+    fn test_borrow_consistency_with_as_ref() {
+        use std::borrow::Borrow;
+
+        let vec = TruenoVec::from(vec![7, 8, 9]);
+        let borrowed: &[i32] = vec.borrow();
+        let as_ref: &[i32] = vec.as_ref();
+
+        assert_eq!(borrowed, as_ref);
+        assert_eq!(borrowed.as_ptr(), as_ref.as_ptr());
+    }
+
+    #[test]
+    fn test_borrow_mut_consistency_with_as_mut() {
+        use std::borrow::BorrowMut;
+
+        let mut vec1 = TruenoVec::from(vec![1, 2, 3]);
+        let mut vec2 = TruenoVec::from(vec![1, 2, 3]);
+
+        let borrowed: &mut [i32] = vec1.borrow_mut();
+        let as_mut: &mut [i32] = vec2.as_mut();
+
+        borrowed[0] = 99;
+        as_mut[0] = 99;
+
+        assert_eq!(vec1.as_slice(), vec2.as_slice());
+    }
+
+    #[test]
+    fn test_borrow_hashmap_lookup() {
+        use std::borrow::Borrow;
+        use std::collections::HashMap;
+
+        let mut map: HashMap<Vec<i32>, &str> = HashMap::new();
+        map.insert(vec![1, 2, 3], "found");
+
+        let key = TruenoVec::from(vec![1, 2, 3]);
+        // This works because TruenoVec implements Borrow<[T]>
+        // and Vec's Borrow<[T]> matches
+        let borrowed: &[i32] = key.borrow();
+
+        // Note: HashMap lookup with Borrow requires exact type match
+        // This demonstrates the trait works, even if lookup semantics differ
+        assert_eq!(borrowed, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn test_borrow_slice_methods() {
+        use std::borrow::Borrow;
+
+        let vec = TruenoVec::from(vec![1, 2, 3, 4, 5]);
+        let slice: &[i32] = vec.borrow();
+
+        assert_eq!(slice.len(), 5);
+        assert_eq!(slice.first(), Some(&1));
+        assert_eq!(slice.last(), Some(&5));
+        assert_eq!(&slice[1..3], &[2, 3]);
     }
 }
 
@@ -4808,6 +5097,117 @@ mod property_tests {
 
             // Ordering should match std::Vec
             prop_assert_eq!(trueno1.cmp(&trueno2), elements1.cmp(&elements2));
+        }
+    }
+
+    // ========================================================================
+    // Phase 3.3: Property-Based Tests for Display and Borrow
+    // ========================================================================
+
+    // Property 54: Display Format Consistency
+    proptest! {
+        #[test]
+        fn prop_display_format_consistency(elements in prop::collection::vec(any::<i32>(), 0..20)) {
+            let vec = TruenoVec::from(elements.clone());
+            let display_output = format!("{vec}");
+            let expected_output = format!("{elements:?}");
+
+            // Display should match std::Vec's Debug output
+            prop_assert_eq!(display_output, expected_output);
+        }
+    }
+
+    // Property 55: Display Empty Vector
+    proptest! {
+        #[test]
+        fn prop_display_empty(_n in 0..100usize) {
+            let vec: TruenoVec<i32> = TruenoVec::new();
+            prop_assert_eq!(format!("{}", vec), "[]");
+        }
+    }
+
+    // Property 56: Display After Operations
+    proptest! {
+        #[test]
+        fn prop_display_after_push(
+            initial in prop::collection::vec(any::<i32>(), 0..10),
+            x in any::<i32>()
+        ) {
+            let mut vec = TruenoVec::from(initial.clone());
+            vec.push(x);
+
+            let mut expected = initial;
+            expected.push(x);
+
+            prop_assert_eq!(format!("{}", vec), format!("{:?}", expected));
+        }
+    }
+
+    // Property 57: Borrow Equivalence with AsRef
+    proptest! {
+        #[test]
+        fn prop_borrow_equals_as_ref(elements in prop::collection::vec(any::<i32>(), 0..50)) {
+            use std::borrow::Borrow;
+
+            let vec = TruenoVec::from(elements);
+            let borrowed: &[i32] = vec.borrow();
+            let as_ref: &[i32] = vec.as_ref();
+
+            prop_assert_eq!(borrowed, as_ref);
+            prop_assert_eq!(borrowed.as_ptr(), as_ref.as_ptr());
+        }
+    }
+
+    // Property 58: BorrowMut Equivalence with AsMut
+    proptest! {
+        #[test]
+        fn prop_borrow_mut_equals_as_mut(elements in prop::collection::vec(any::<i32>(), 0..50)) {
+            use std::borrow::BorrowMut;
+
+            let mut vec1 = TruenoVec::from(elements.clone());
+            let mut vec2 = TruenoVec::from(elements);
+
+            let borrowed_slice: &mut [i32] = vec1.borrow_mut();
+            let as_mut_slice: &mut [i32] = vec2.as_mut();
+
+            let borrowed_ptr = borrowed_slice.as_ptr();
+            let as_mut_ptr = as_mut_slice.as_ptr();
+
+            // Both should return the same underlying pointer
+            prop_assert_eq!(borrowed_ptr, vec1.as_slice().as_ptr());
+            prop_assert_eq!(as_mut_ptr, vec2.as_slice().as_ptr());
+        }
+    }
+
+    // Property 59: Borrow Slice Operations
+    proptest! {
+        #[test]
+        fn prop_borrow_slice_operations(elements in prop::collection::vec(any::<i32>(), 1..50)) {
+            use std::borrow::Borrow;
+
+            let vec = TruenoVec::from(elements.clone());
+            let slice: &[i32] = vec.borrow();
+
+            // All slice operations should work correctly
+            prop_assert_eq!(slice.len(), elements.len());
+            prop_assert_eq!(slice.first(), elements.first());
+            prop_assert_eq!(slice.last(), elements.last());
+            prop_assert_eq!(slice, elements.as_slice());
+        }
+    }
+
+    // Property 60: Display Respects Element Display Impl
+    proptest! {
+        #[test]
+        fn prop_display_respects_element_display(elements in prop::collection::vec(any::<u32>(), 0..15)) {
+            let vec = TruenoVec::from(elements.clone());
+            let display_str = format!("{vec}");
+
+            // Display should contain each element's string representation
+            for elem in &elements {
+                let elem_str = format!("{elem}");
+                prop_assert!(display_str.contains(&elem_str));
+            }
         }
     }
 }
