@@ -344,6 +344,127 @@ impl<T> TruenoVec<T> {
         }
     }
 
+    /// Clears the vector, removing all values.
+    ///
+    /// This method removes all elements from the vector but does not change
+    /// its capacity. The allocated memory is retained for reuse.
+    ///
+    /// # Complexity
+    ///
+    /// O(n) where n is the number of elements
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// let capacity = vec.capacity();
+    /// vec.clear();
+    ///
+    /// assert_eq!(vec.len(), 0);
+    /// assert_eq!(vec.capacity(), capacity); // Capacity unchanged
+    /// assert!(vec.is_empty());
+    /// ```
+    pub fn clear(&mut self) {
+        while self.pop().is_some() {}
+    }
+
+    /// Inserts an element at position `index`, shifting all elements after it
+    /// to the right.
+    ///
+    /// # Complexity
+    ///
+    /// - Time: O(n) where n is the number of elements after the insertion point
+    /// - Space: O(1) amortized (may reallocate if capacity is exceeded)
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index > len()`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(3);
+    /// vec.insert(1, 2); // Insert 2 at index 1
+    ///
+    /// assert_eq!(vec.get(0), Some(&1));
+    /// assert_eq!(vec.get(1), Some(&2));
+    /// assert_eq!(vec.get(2), Some(&3));
+    /// ```
+    pub fn insert(&mut self, index: usize, value: T) {
+        assert!(index <= self.len, "insertion index out of bounds");
+
+        if self.len == self.capacity {
+            self.grow();
+        }
+
+        // SAFETY: len < capacity after grow, index <= len
+        unsafe {
+            let ptr = self.ptr.as_ptr();
+            // Shift elements [index..len) one position to the right
+            if index < self.len {
+                ptr::copy(ptr.add(index), ptr.add(index + 1), self.len - index);
+            }
+            // Write the new value at index
+            ptr::write(ptr.add(index), value);
+        }
+
+        self.len += 1;
+    }
+
+    /// Removes and returns the element at position `index`, shifting all
+    /// elements after it to the left.
+    ///
+    /// # Complexity
+    ///
+    /// O(n) where n is the number of elements after the removal point
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index >= len()`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// let removed = vec.remove(1);
+    /// assert_eq!(removed, 2);
+    /// assert_eq!(vec.len(), 2);
+    /// assert_eq!(vec.get(0), Some(&1));
+    /// assert_eq!(vec.get(1), Some(&3));
+    /// ```
+    pub fn remove(&mut self, index: usize) -> T {
+        assert!(index < self.len, "removal index out of bounds");
+
+        // SAFETY: index < len, so it's a valid initialized element
+        unsafe {
+            let ptr = self.ptr.as_ptr();
+            // Read the value at index
+            let value = ptr::read(ptr.add(index));
+            // Shift elements [index+1..len) one position to the left
+            if index < self.len - 1 {
+                ptr::copy(ptr.add(index + 1), ptr.add(index), self.len - index - 1);
+            }
+            self.len -= 1;
+            value
+        }
+    }
+
     /// Doubles the capacity of the vector.
     ///
     /// Uses a growth factor of 2x for exponential growth, ensuring amortized O(1) push.
@@ -416,6 +537,267 @@ unsafe impl<T: Send> Send for TruenoVec<T> {}
 
 // Thread safety: TruenoVec<T> is Sync if T is Sync
 unsafe impl<T: Sync> Sync for TruenoVec<T> {}
+
+// ============================================================================
+// Iterator Implementations
+// ============================================================================
+
+/// Immutable iterator over `TruenoVec<T>`.
+///
+/// This struct is created by the `iter` method on `TruenoVec`.
+pub struct Iter<'a, T> {
+    ptr: *const T,
+    end: *const T,
+    _marker: PhantomData<&'a T>,
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.ptr == self.end {
+            None
+        } else {
+            // SAFETY: ptr is valid and within bounds
+            unsafe {
+                let item = &*self.ptr;
+                self.ptr = self.ptr.add(1);
+                Some(item)
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = (self.end as usize - self.ptr as usize) / std::mem::size_of::<T>();
+        (len, Some(len))
+    }
+}
+
+impl<T> ExactSizeIterator for Iter<'_, T> {}
+
+impl<T> DoubleEndedIterator for Iter<'_, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.ptr == self.end {
+            None
+        } else {
+            // SAFETY: end-1 is valid and within bounds
+            unsafe {
+                self.end = self.end.sub(1);
+                Some(&*self.end)
+            }
+        }
+    }
+}
+
+/// Mutable iterator over `TruenoVec<T>`.
+///
+/// This struct is created by the `iter_mut` method on `TruenoVec`.
+pub struct IterMut<'a, T> {
+    ptr: *mut T,
+    end: *mut T,
+    _marker: PhantomData<&'a mut T>,
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.ptr == self.end {
+            None
+        } else {
+            // SAFETY: ptr is valid and within bounds
+            unsafe {
+                let item = &mut *self.ptr;
+                self.ptr = self.ptr.add(1);
+                Some(item)
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = (self.end as usize - self.ptr as usize) / std::mem::size_of::<T>();
+        (len, Some(len))
+    }
+}
+
+impl<T> ExactSizeIterator for IterMut<'_, T> {}
+
+impl<T> DoubleEndedIterator for IterMut<'_, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.ptr == self.end {
+            None
+        } else {
+            // SAFETY: end-1 is valid and within bounds
+            unsafe {
+                self.end = self.end.sub(1);
+                Some(&mut *self.end)
+            }
+        }
+    }
+}
+
+/// Consuming iterator over `TruenoVec<T>`.
+///
+/// This struct is created by the `into_iter` method on `TruenoVec`
+/// (provided by the `IntoIterator` trait).
+pub struct IntoIter<T> {
+    vec: TruenoVec<T>,
+    current: usize,
+}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current < self.vec.len {
+            let index = self.current;
+            self.current += 1;
+            // SAFETY: index < len, so it's a valid initialized element
+            // We take ownership by reading, so the Drop impl won't try to drop it again
+            unsafe { Some(ptr::read(self.vec.ptr.as_ptr().add(index))) }
+        } else {
+            None
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.vec.len - self.current;
+        (remaining, Some(remaining))
+    }
+}
+
+impl<T> ExactSizeIterator for IntoIter<T> {}
+
+impl<T> Drop for IntoIter<T> {
+    fn drop(&mut self) {
+        // Drop all remaining unconsumed elements
+        while self.current < self.vec.len {
+            unsafe {
+                ptr::drop_in_place(self.vec.ptr.as_ptr().add(self.current));
+            }
+            self.current += 1;
+        }
+
+        // Now deallocate the memory (all elements have been dropped)
+        if self.vec.capacity > 0 {
+            let layout = Layout::array::<T>(self.vec.capacity).expect("capacity overflow");
+            unsafe {
+                alloc::dealloc(self.vec.ptr.as_ptr().cast::<u8>(), layout);
+            }
+        }
+
+        // Prevent the vec's Drop from running by setting capacity to 0
+        // This is safe because we've already handled deallocation
+        self.vec.capacity = 0;
+        self.vec.len = 0;
+    }
+}
+
+impl<T> TruenoVec<T> {
+    /// Returns an iterator over the vector.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// let mut iter = vec.iter();
+    /// assert_eq!(iter.next(), Some(&1));
+    /// assert_eq!(iter.next(), Some(&2));
+    /// assert_eq!(iter.next(), Some(&3));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[must_use]
+    pub const fn iter(&self) -> Iter<'_, T> {
+        // SAFETY: ptr and ptr+len are both valid
+        unsafe {
+            Iter {
+                ptr: self.ptr.as_ptr(),
+                end: self.ptr.as_ptr().add(self.len),
+                _marker: PhantomData,
+            }
+        }
+    }
+
+    /// Returns a mutable iterator over the vector.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// for elem in vec.iter_mut() {
+    ///     *elem *= 2;
+    /// }
+    ///
+    /// assert_eq!(vec.get(0), Some(&2));
+    /// assert_eq!(vec.get(1), Some(&4));
+    /// assert_eq!(vec.get(2), Some(&6));
+    /// ```
+    #[must_use]
+    pub const fn iter_mut(&mut self) -> IterMut<'_, T> {
+        // SAFETY: ptr and ptr+len are both valid
+        unsafe {
+            IterMut {
+                ptr: self.ptr.as_ptr(),
+                end: self.ptr.as_ptr().add(self.len),
+                _marker: PhantomData,
+            }
+        }
+    }
+}
+
+impl<T> IntoIterator for TruenoVec<T> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+
+    /// Consumes the vector and returns an iterator over its elements.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// let sum: i32 = vec.into_iter().sum();
+    /// assert_eq!(sum, 6);
+    /// ```
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter { vec: self, current: 0 }
+    }
+}
+
+impl<'a, T> IntoIterator for &'a TruenoVec<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut TruenoVec<T> {
+    type Item = &'a mut T;
+    type IntoIter = IterMut<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
+}
 
 // ============================================================================
 // Unit Tests (Tier 1: Sub-second feedback)
@@ -638,6 +1020,339 @@ mod tests {
             assert!(vec.capacity() > 0);
         } // vec dropped here - should deallocate despite len=0
     }
+
+    #[test]
+    fn test_clear_empty() {
+        let mut vec: TruenoVec<i32> = TruenoVec::new();
+        vec.clear();
+        assert_eq!(vec.len(), 0);
+        assert!(vec.is_empty());
+    }
+
+    #[test]
+    fn test_clear_with_elements() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let capacity = vec.capacity();
+        vec.clear();
+
+        assert_eq!(vec.len(), 0);
+        assert!(vec.is_empty());
+        assert_eq!(vec.capacity(), capacity); // Capacity should be unchanged
+    }
+
+    #[test]
+    fn test_clear_with_drop() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+
+        struct DropCounter(Arc<AtomicUsize>);
+        impl Drop for DropCounter {
+            fn drop(&mut self) {
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        {
+            let mut vec = TruenoVec::new();
+            for _ in 0..5 {
+                vec.push(DropCounter(Arc::clone(&counter)));
+            }
+            vec.clear();
+            assert_eq!(counter.load(Ordering::SeqCst), 5); // All elements dropped
+            assert_eq!(vec.len(), 0);
+        }
+    }
+
+    #[test]
+    fn test_insert_at_start() {
+        let mut vec = TruenoVec::new();
+        vec.push(2);
+        vec.push(3);
+        vec.insert(0, 1);
+
+        assert_eq!(vec.len(), 3);
+        assert_eq!(vec.get(0), Some(&1));
+        assert_eq!(vec.get(1), Some(&2));
+        assert_eq!(vec.get(2), Some(&3));
+    }
+
+    #[test]
+    fn test_insert_at_middle() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(3);
+        vec.insert(1, 2);
+
+        assert_eq!(vec.len(), 3);
+        assert_eq!(vec.get(0), Some(&1));
+        assert_eq!(vec.get(1), Some(&2));
+        assert_eq!(vec.get(2), Some(&3));
+    }
+
+    #[test]
+    fn test_insert_at_end() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.insert(2, 3); // Insert at end (equivalent to push)
+
+        assert_eq!(vec.len(), 3);
+        assert_eq!(vec.get(2), Some(&3));
+    }
+
+    #[test]
+    fn test_insert_empty_vector() {
+        let mut vec: TruenoVec<i32> = TruenoVec::new();
+        vec.insert(0, 42);
+
+        assert_eq!(vec.len(), 1);
+        assert_eq!(vec.get(0), Some(&42));
+    }
+
+    #[test]
+    #[should_panic(expected = "insertion index out of bounds")]
+    fn test_insert_out_of_bounds() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.insert(5, 2); // index > len
+    }
+
+    #[test]
+    fn test_remove_at_start() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let removed = vec.remove(0);
+        assert_eq!(removed, 1);
+        assert_eq!(vec.len(), 2);
+        assert_eq!(vec.get(0), Some(&2));
+        assert_eq!(vec.get(1), Some(&3));
+    }
+
+    #[test]
+    fn test_remove_at_middle() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let removed = vec.remove(1);
+        assert_eq!(removed, 2);
+        assert_eq!(vec.len(), 2);
+        assert_eq!(vec.get(0), Some(&1));
+        assert_eq!(vec.get(1), Some(&3));
+    }
+
+    #[test]
+    fn test_remove_at_end() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let removed = vec.remove(2);
+        assert_eq!(removed, 3);
+        assert_eq!(vec.len(), 2);
+    }
+
+    #[test]
+    fn test_remove_all_elements() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+
+        let removed = vec.remove(0);
+        assert_eq!(removed, 1);
+        assert_eq!(vec.len(), 0);
+        assert!(vec.is_empty());
+    }
+
+    #[test]
+    #[should_panic(expected = "removal index out of bounds")]
+    fn test_remove_empty_vector() {
+        let mut vec: TruenoVec<i32> = TruenoVec::new();
+        vec.remove(0);
+    }
+
+    #[test]
+    #[should_panic(expected = "removal index out of bounds")]
+    fn test_remove_out_of_bounds() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.remove(5); // index >= len
+    }
+
+    #[test]
+    fn test_iter() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let mut iter = vec.iter();
+        assert_eq!(iter.next(), Some(&1));
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_iter_empty() {
+        let vec: TruenoVec<i32> = TruenoVec::new();
+        let mut iter = vec.iter();
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_iter_collect() {
+        let mut vec = TruenoVec::new();
+        for i in 0..10 {
+            vec.push(i);
+        }
+
+        let collected: Vec<_> = vec.iter().copied().collect();
+        assert_eq!(collected, (0..10).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_iter_rev() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let collected: Vec<_> = vec.iter().copied().rev().collect();
+        assert_eq!(collected, vec![3, 2, 1]);
+    }
+
+    #[test]
+    fn test_iter_mut() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        for elem in &mut vec {
+            *elem *= 2;
+        }
+
+        assert_eq!(vec.get(0), Some(&2));
+        assert_eq!(vec.get(1), Some(&4));
+        assert_eq!(vec.get(2), Some(&6));
+    }
+
+    #[test]
+    fn test_iter_mut_empty() {
+        let mut vec: TruenoVec<i32> = TruenoVec::new();
+        let mut iter = vec.iter_mut();
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_into_iter() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let mut iter = vec.into_iter();
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_into_iter_sum() {
+        let mut vec = TruenoVec::new();
+        for i in 1..=10 {
+            vec.push(i);
+        }
+
+        let sum: i32 = vec.into_iter().sum();
+        assert_eq!(sum, 55); // 1+2+3+...+10 = 55
+    }
+
+    #[test]
+    fn test_for_loop_ref() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let mut sum = 0;
+        for &elem in &vec {
+            sum += elem;
+        }
+        assert_eq!(sum, 6);
+    }
+
+    #[test]
+    fn test_for_loop_mut() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        for elem in &mut vec {
+            *elem += 10;
+        }
+
+        assert_eq!(vec.get(0), Some(&11));
+        assert_eq!(vec.get(1), Some(&12));
+        assert_eq!(vec.get(2), Some(&13));
+    }
+
+    #[test]
+    fn test_exact_size_iterator() {
+        let mut vec = TruenoVec::new();
+        for i in 0..10 {
+            vec.push(i);
+        }
+
+        let iter = vec.iter();
+        assert_eq!(iter.len(), 10);
+
+        let iter_mut = vec.iter_mut();
+        assert_eq!(iter_mut.len(), 10);
+    }
+
+    #[test]
+    fn test_into_iter_drop() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+
+        struct DropCounter(Arc<AtomicUsize>);
+        impl Drop for DropCounter {
+            fn drop(&mut self) {
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        {
+            let mut vec = TruenoVec::new();
+            for _ in 0..5 {
+                vec.push(DropCounter(Arc::clone(&counter)));
+            }
+
+            // Consume only 2 elements
+            let mut iter = vec.into_iter();
+            iter.next();
+            iter.next();
+            // iter dropped here, should drop remaining 3 + consumed 2 = 5 total
+        }
+
+        assert_eq!(counter.load(Ordering::SeqCst), 5);
+    }
 }
 
 // ============================================================================
@@ -842,6 +1557,142 @@ mod property_tests {
 
                 prop_assert_eq!(v.len(), shadow_vec.len());
                 prop_assert!(v.capacity() >= v.len());
+            }
+        }
+    }
+
+    // Property 11: Clear Empties Vector
+    proptest! {
+        #[test]
+        fn prop_clear_empties(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let mut v = TruenoVec::new();
+            for elem in elements {
+                v.push(elem);
+            }
+
+            let capacity_before = v.capacity();
+            v.clear();
+
+            prop_assert!(v.is_empty());
+            prop_assert_eq!(v.len(), 0);
+            prop_assert_eq!(v.capacity(), capacity_before); // Capacity unchanged
+        }
+    }
+
+    // Property 12: Insert Maintains Order
+    proptest! {
+        #[test]
+        fn prop_insert_maintains_order(
+            mut elements in prop::collection::vec(any::<i32>(), 1..50),
+            index in 0usize..50,
+            value in any::<i32>()
+        ) {
+            let len = elements.len();
+            if index > len {
+                return Ok(());
+            }
+
+            let mut v = TruenoVec::new();
+            for elem in &elements {
+                v.push(*elem);
+            }
+
+            v.insert(index, value);
+            elements.insert(index, value);
+
+            prop_assert_eq!(v.len(), elements.len());
+            for (i, expected) in elements.iter().enumerate() {
+                prop_assert_eq!(v.get(i), Some(expected));
+            }
+        }
+    }
+
+    // Property 13: Remove Maintains Order
+    proptest! {
+        #[test]
+        fn prop_remove_maintains_order(
+            mut elements in prop::collection::vec(any::<i32>(), 1..50),
+            index in 0usize..50
+        ) {
+            if elements.is_empty() || index >= elements.len() {
+                return Ok(());
+            }
+
+            let mut v = TruenoVec::new();
+            for elem in &elements {
+                v.push(*elem);
+            }
+
+            let removed_trueno = v.remove(index);
+            let removed_std = elements.remove(index);
+
+            prop_assert_eq!(removed_trueno, removed_std);
+            prop_assert_eq!(v.len(), elements.len());
+
+            for (i, expected) in elements.iter().enumerate() {
+                prop_assert_eq!(v.get(i), Some(expected));
+            }
+        }
+    }
+
+    // Property 14: Insert Then Remove Inverse
+    proptest! {
+        #[test]
+        fn prop_insert_remove_inverse(
+            elements in prop::collection::vec(any::<i32>(), 0..50),
+            index in 0usize..50,
+            value in any::<i32>()
+        ) {
+            if index > elements.len() {
+                return Ok(());
+            }
+
+            let mut v = TruenoVec::new();
+            for elem in &elements {
+                v.push(*elem);
+            }
+
+            let len_before = v.len();
+            v.insert(index, value);
+            let removed = v.remove(index);
+
+            prop_assert_eq!(removed, value);
+            prop_assert_eq!(v.len(), len_before);
+
+            // Verify original elements are intact
+            for (i, expected) in elements.iter().enumerate() {
+                prop_assert_eq!(v.get(i), Some(expected));
+            }
+        }
+    }
+
+    // Property 15: Clear Then Reuse
+    proptest! {
+        #[test]
+        fn prop_clear_then_reuse(
+            first_batch in prop::collection::vec(any::<i32>(), 0..50),
+            second_batch in prop::collection::vec(any::<i32>(), 0..50)
+        ) {
+            let mut v = TruenoVec::new();
+
+            // Fill with first batch
+            for elem in &first_batch {
+                v.push(*elem);
+            }
+
+            // Clear
+            v.clear();
+            prop_assert_eq!(v.len(), 0);
+
+            // Fill with second batch
+            for elem in &second_batch {
+                v.push(*elem);
+            }
+
+            // Verify second batch is correct
+            prop_assert_eq!(v.len(), second_batch.len());
+            for (i, expected) in second_batch.iter().enumerate() {
+                prop_assert_eq!(v.get(i), Some(expected));
             }
         }
     }

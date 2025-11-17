@@ -20,6 +20,12 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 [dev-dependencies]
 # Property-based testing framework
 proptest = "1.5"
+# Performance benchmarking
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "vec_benchmarks"
+harness = false
 
 # Test coverage tools
 # Note: cargo-tarpaulin and cargo-llvm-cov are installed as cargo subcommands

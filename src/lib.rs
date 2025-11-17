@@ -58,7 +58,7 @@
 
 pub mod vec;
 
-pub use vec::TruenoVec;
+pub use vec::{IntoIter, Iter, IterMut, TruenoVec};
 
 /// Adds two numbers together.
 ///
