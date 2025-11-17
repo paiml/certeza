@@ -539,6 +539,170 @@ unsafe impl<T: Send> Send for TruenoVec<T> {}
 unsafe impl<T: Sync> Sync for TruenoVec<T> {}
 
 // ============================================================================
+// Conversion Trait Implementations
+// ============================================================================
+
+impl<T> From<Vec<T>> for TruenoVec<T> {
+    /// Converts a `Vec<T>` into a `TruenoVec<T>`.
+    ///
+    /// This conversion takes ownership of the `Vec` and efficiently reuses
+    /// its underlying allocation by transferring elements one by one.
+    ///
+    /// # Complexity
+    ///
+    /// - Time: O(n) where n is the number of elements
+    /// - Space: O(n) for the new allocation (original Vec allocation is dropped)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let std_vec = vec![1, 2, 3, 4, 5];
+    /// let trueno_vec: TruenoVec<i32> = TruenoVec::from(std_vec);
+    ///
+    /// assert_eq!(trueno_vec.len(), 5);
+    /// assert_eq!(trueno_vec.get(0), Some(&1));
+    /// assert_eq!(trueno_vec.get(4), Some(&5));
+    /// ```
+    fn from(vec: Vec<T>) -> Self {
+        let mut trueno = Self::with_capacity(vec.len());
+        for item in vec {
+            trueno.push(item);
+        }
+        trueno
+    }
+}
+
+impl<T: Clone> From<&[T]> for TruenoVec<T> {
+    /// Converts a slice `&[T]` into a `TruenoVec<T>`.
+    ///
+    /// This conversion clones all elements from the slice into a new `TruenoVec`.
+    /// Requires `T: Clone` since we're creating owned copies.
+    ///
+    /// # Complexity
+    ///
+    /// - Time: O(n) where n is the number of elements
+    /// - Space: O(n)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let array = [1, 2, 3, 4, 5];
+    /// let slice: &[i32] = &array;
+    /// let trueno_vec: TruenoVec<i32> = TruenoVec::from(slice);
+    ///
+    /// assert_eq!(trueno_vec.len(), 5);
+    /// assert_eq!(trueno_vec.get(2), Some(&3));
+    /// ```
+    fn from(slice: &[T]) -> Self {
+        let mut trueno = Self::with_capacity(slice.len());
+        for item in slice {
+            trueno.push(item.clone());
+        }
+        trueno
+    }
+}
+
+impl<T> FromIterator<T> for TruenoVec<T> {
+    /// Creates a `TruenoVec<T>` from an iterator.
+    ///
+    /// This enables the `.collect()` method on iterators to produce a `TruenoVec`.
+    ///
+    /// # Complexity
+    ///
+    /// - Time: O(n) where n is the number of elements in the iterator
+    /// - Space: O(n)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let trueno_vec: TruenoVec<i32> = (0..10).collect();
+    ///
+    /// assert_eq!(trueno_vec.len(), 10);
+    /// assert_eq!(trueno_vec.get(5), Some(&5));
+    /// ```
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let numbers = vec![1, 2, 3, 4, 5];
+    /// let doubled: TruenoVec<i32> = numbers.iter().map(|x| x * 2).collect();
+    ///
+    /// assert_eq!(doubled.len(), 5);
+    /// assert_eq!(doubled.get(0), Some(&2));
+    /// assert_eq!(doubled.get(4), Some(&10));
+    /// ```
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let iter = iter.into_iter();
+        let (lower_bound, _) = iter.size_hint();
+        let mut trueno = Self::with_capacity(lower_bound);
+
+        for item in iter {
+            trueno.push(item);
+        }
+
+        trueno
+    }
+}
+
+impl<T> Extend<T> for TruenoVec<T> {
+    /// Extends a `TruenoVec<T>` with the contents of an iterator.
+    ///
+    /// This method appends all elements from the iterator to the end of the vector.
+    ///
+    /// # Complexity
+    ///
+    /// - Time: O(n) where n is the number of elements in the iterator
+    /// - Space: O(n) amortized
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    ///
+    /// vec.extend(vec![3, 4, 5]);
+    ///
+    /// assert_eq!(vec.len(), 5);
+    /// assert_eq!(vec.get(0), Some(&1));
+    /// assert_eq!(vec.get(4), Some(&5));
+    /// ```
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.extend(0..10);
+    ///
+    /// assert_eq!(vec.len(), 10);
+    /// ```
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        let iter = iter.into_iter();
+        let (lower_bound, _) = iter.size_hint();
+
+        // Reserve space if we know the size hint
+        if lower_bound > 0 {
+            let needed_capacity = self.len.saturating_add(lower_bound);
+            while self.capacity < needed_capacity {
+                self.grow();
+            }
+        }
+
+        for item in iter {
+            self.push(item);
+        }
+    }
+}
+
+// ============================================================================
 // Iterator Implementations
 // ============================================================================
 
@@ -1439,6 +1603,317 @@ mod tests {
 
         assert_eq!(counter.load(Ordering::SeqCst), 5);
     }
+
+    // ========================================================================
+    // Conversion Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_from_vec_basic() {
+        let std_vec = vec![1, 2, 3, 4, 5];
+        let trueno_vec: TruenoVec<i32> = TruenoVec::from(std_vec);
+
+        assert_eq!(trueno_vec.len(), 5);
+        assert_eq!(trueno_vec.get(0), Some(&1));
+        assert_eq!(trueno_vec.get(2), Some(&3));
+        assert_eq!(trueno_vec.get(4), Some(&5));
+    }
+
+    #[test]
+    fn test_from_vec_empty() {
+        let std_vec: Vec<i32> = vec![];
+        let trueno_vec: TruenoVec<i32> = TruenoVec::from(std_vec);
+
+        assert_eq!(trueno_vec.len(), 0);
+        assert!(trueno_vec.is_empty());
+    }
+
+    #[test]
+    fn test_from_vec_large() {
+        let std_vec: Vec<i32> = (0..100).collect();
+        let trueno_vec: TruenoVec<i32> = TruenoVec::from(std_vec);
+
+        assert_eq!(trueno_vec.len(), 100);
+        for i in 0..100 {
+            assert_eq!(trueno_vec.get(i), Some(&i32::try_from(i).unwrap()));
+        }
+    }
+
+    #[test]
+    fn test_from_vec_drops_properly() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+
+        struct DropCounter(Arc<AtomicUsize>);
+        impl Drop for DropCounter {
+            fn drop(&mut self) {
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        {
+            let mut std_vec = Vec::new();
+            for _ in 0..5 {
+                std_vec.push(DropCounter(Arc::clone(&counter)));
+            }
+
+            let trueno_vec = TruenoVec::from(std_vec);
+            assert_eq!(trueno_vec.len(), 5);
+        } // trueno_vec dropped here
+
+        // All 5 elements should be dropped exactly once
+        assert_eq!(counter.load(Ordering::SeqCst), 5);
+    }
+
+    #[test]
+    fn test_from_slice_basic() {
+        let array = [1, 2, 3, 4, 5];
+        let slice: &[i32] = &array;
+        let trueno_vec: TruenoVec<i32> = TruenoVec::from(slice);
+
+        assert_eq!(trueno_vec.len(), 5);
+        assert_eq!(trueno_vec.get(0), Some(&1));
+        assert_eq!(trueno_vec.get(2), Some(&3));
+        assert_eq!(trueno_vec.get(4), Some(&5));
+    }
+
+    #[test]
+    fn test_from_slice_empty() {
+        let slice: &[i32] = &[];
+        let trueno_vec: TruenoVec<i32> = TruenoVec::from(slice);
+
+        assert_eq!(trueno_vec.len(), 0);
+        assert!(trueno_vec.is_empty());
+    }
+
+    #[test]
+    fn test_from_slice_clones_elements() {
+        // Test that elements are cloned, not moved
+        let original = vec![String::from("hello"), String::from("world")];
+        let slice = original.as_slice();
+
+        let trueno_vec: TruenoVec<String> = TruenoVec::from(slice);
+
+        // Original should still be valid
+        assert_eq!(original.len(), 2);
+        assert_eq!(original[0], "hello");
+        assert_eq!(original[1], "world");
+
+        // TruenoVec should have cloned values
+        assert_eq!(trueno_vec.len(), 2);
+        assert_eq!(trueno_vec.get(0), Some(&String::from("hello")));
+        assert_eq!(trueno_vec.get(1), Some(&String::from("world")));
+    }
+
+    #[test]
+    fn test_from_slice_large() {
+        let slice: Vec<i32> = (0..100).collect();
+        let trueno_vec: TruenoVec<i32> = TruenoVec::from(slice.as_slice());
+
+        assert_eq!(trueno_vec.len(), 100);
+        for i in 0..100 {
+            assert_eq!(trueno_vec.get(i), Some(&i32::try_from(i).unwrap()));
+        }
+    }
+
+    #[test]
+    fn test_from_iterator_range() {
+        let trueno_vec: TruenoVec<i32> = (0..10).collect();
+
+        assert_eq!(trueno_vec.len(), 10);
+        for i in 0..10 {
+            assert_eq!(trueno_vec.get(i), Some(&i32::try_from(i).unwrap()));
+        }
+    }
+
+    #[test]
+    fn test_from_iterator_vec() {
+        let std_vec = vec![1, 2, 3, 4, 5];
+        let trueno_vec: TruenoVec<i32> = std_vec.into_iter().collect();
+
+        assert_eq!(trueno_vec.len(), 5);
+        assert_eq!(trueno_vec.get(0), Some(&1));
+        assert_eq!(trueno_vec.get(4), Some(&5));
+    }
+
+    #[test]
+    fn test_from_iterator_empty() {
+        let empty: Vec<i32> = vec![];
+        let trueno_vec: TruenoVec<i32> = empty.into_iter().collect();
+
+        assert_eq!(trueno_vec.len(), 0);
+        assert!(trueno_vec.is_empty());
+    }
+
+    #[test]
+    fn test_from_iterator_map() {
+        let numbers = vec![1, 2, 3, 4, 5];
+        let doubled: TruenoVec<i32> = numbers.iter().map(|x| x * 2).collect();
+
+        assert_eq!(doubled.len(), 5);
+        assert_eq!(doubled.get(0), Some(&2));
+        assert_eq!(doubled.get(2), Some(&6));
+        assert_eq!(doubled.get(4), Some(&10));
+    }
+
+    #[test]
+    fn test_from_iterator_filter() {
+        let trueno_vec: TruenoVec<i32> = (0..20).filter(|x| x % 2 == 0).collect();
+
+        assert_eq!(trueno_vec.len(), 10); // 0, 2, 4, 6, 8, 10, 12, 14, 16, 18
+        assert_eq!(trueno_vec.get(0), Some(&0));
+        assert_eq!(trueno_vec.get(5), Some(&10));
+        assert_eq!(trueno_vec.get(9), Some(&18));
+    }
+
+    #[test]
+    fn test_from_iterator_large() {
+        let trueno_vec: TruenoVec<i32> = (0..1000).collect();
+
+        assert_eq!(trueno_vec.len(), 1000);
+        assert_eq!(trueno_vec.get(0), Some(&0));
+        assert_eq!(trueno_vec.get(500), Some(&500));
+        assert_eq!(trueno_vec.get(999), Some(&999));
+    }
+
+    #[test]
+    fn test_extend_empty_vec() {
+        let mut trueno_vec: TruenoVec<i32> = TruenoVec::new();
+        trueno_vec.extend(vec![1, 2, 3, 4, 5]);
+
+        assert_eq!(trueno_vec.len(), 5);
+        assert_eq!(trueno_vec.get(0), Some(&1));
+        assert_eq!(trueno_vec.get(4), Some(&5));
+    }
+
+    #[test]
+    fn test_extend_existing_vec() {
+        let mut trueno_vec = TruenoVec::new();
+        trueno_vec.push(1);
+        trueno_vec.push(2);
+
+        trueno_vec.extend(vec![3, 4, 5]);
+
+        assert_eq!(trueno_vec.len(), 5);
+        assert_eq!(trueno_vec.get(0), Some(&1));
+        assert_eq!(trueno_vec.get(2), Some(&3));
+        assert_eq!(trueno_vec.get(4), Some(&5));
+    }
+
+    #[test]
+    fn test_extend_multiple_times() {
+        let mut trueno_vec = TruenoVec::new();
+
+        trueno_vec.extend(vec![1, 2]);
+        assert_eq!(trueno_vec.len(), 2);
+
+        trueno_vec.extend(vec![3, 4]);
+        assert_eq!(trueno_vec.len(), 4);
+
+        trueno_vec.extend(vec![5, 6]);
+        assert_eq!(trueno_vec.len(), 6);
+
+        for i in 0..6 {
+            assert_eq!(
+                trueno_vec.get(i),
+                Some(&i32::try_from(i + 1).unwrap())
+            );
+        }
+    }
+
+    #[test]
+    fn test_extend_from_range() {
+        let mut trueno_vec = TruenoVec::new();
+        trueno_vec.extend(0..10);
+
+        assert_eq!(trueno_vec.len(), 10);
+        for i in 0..10 {
+            assert_eq!(trueno_vec.get(i), Some(&i32::try_from(i).unwrap()));
+        }
+    }
+
+    #[test]
+    fn test_extend_from_iterator() {
+        let mut trueno_vec = TruenoVec::new();
+        trueno_vec.push(1);
+
+        let numbers = vec![2, 3, 4];
+        trueno_vec.extend(numbers.into_iter().map(|x| x * 2));
+
+        assert_eq!(trueno_vec.len(), 4);
+        assert_eq!(trueno_vec.get(0), Some(&1));
+        assert_eq!(trueno_vec.get(1), Some(&4));
+        assert_eq!(trueno_vec.get(2), Some(&6));
+        assert_eq!(trueno_vec.get(3), Some(&8));
+    }
+
+    #[test]
+    fn test_extend_empty_iterator() {
+        let mut trueno_vec = TruenoVec::new();
+        trueno_vec.push(1);
+        trueno_vec.push(2);
+
+        let empty: Vec<i32> = vec![];
+        trueno_vec.extend(empty);
+
+        assert_eq!(trueno_vec.len(), 2);
+        assert_eq!(trueno_vec.get(0), Some(&1));
+        assert_eq!(trueno_vec.get(1), Some(&2));
+    }
+
+    #[test]
+    fn test_extend_large() {
+        let mut trueno_vec = TruenoVec::new();
+        trueno_vec.extend(0..500);
+
+        assert_eq!(trueno_vec.len(), 500);
+
+        trueno_vec.extend(500..1000);
+
+        assert_eq!(trueno_vec.len(), 1000);
+        for i in 0..1000 {
+            assert_eq!(trueno_vec.get(i), Some(&i32::try_from(i).unwrap()));
+        }
+    }
+
+    #[test]
+    fn test_extend_preserves_capacity() {
+        let mut trueno_vec = TruenoVec::with_capacity(100);
+        trueno_vec.extend(0..50);
+
+        assert_eq!(trueno_vec.len(), 50);
+        assert!(trueno_vec.capacity() >= 100);
+    }
+
+    #[test]
+    fn test_conversion_chain() {
+        // Test that conversions can be chained
+        let std_vec = vec![1, 2, 3, 4, 5];
+        let trueno_vec: TruenoVec<i32> = TruenoVec::from(std_vec);
+
+        // Extend it
+        let mut extended = trueno_vec;
+        extended.extend(6..10);
+
+        assert_eq!(extended.len(), 9);
+        for i in 0..9 {
+            assert_eq!(extended.get(i), Some(&i32::try_from(i + 1).unwrap()));
+        }
+    }
+
+    #[test]
+    fn test_collect_then_extend() {
+        let trueno_vec: TruenoVec<i32> = (0..5).collect();
+        let mut extended = trueno_vec;
+        extended.extend(5..10);
+
+        assert_eq!(extended.len(), 10);
+        for i in 0..10 {
+            assert_eq!(extended.get(i), Some(&i32::try_from(i).unwrap()));
+        }
+    }
 }
 
 // ============================================================================
@@ -1779,6 +2254,240 @@ mod property_tests {
             prop_assert_eq!(v.len(), second_batch.len());
             for (i, expected) in second_batch.iter().enumerate() {
                 prop_assert_eq!(v.get(i), Some(expected));
+            }
+        }
+    }
+
+    // ========================================================================
+    // Property-Based Tests for Conversion Traits
+    // ========================================================================
+
+    // Property 16: From<Vec<T>> Preserves Elements
+    proptest! {
+        #[test]
+        fn prop_from_vec_preserves_elements(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let expected = elements.clone();
+            let trueno_vec: TruenoVec<i32> = TruenoVec::from(elements);
+
+            prop_assert_eq!(trueno_vec.len(), expected.len());
+            for (i, &expected_val) in expected.iter().enumerate() {
+                prop_assert_eq!(trueno_vec.get(i), Some(&expected_val));
+            }
+        }
+    }
+
+    // Property 17: From<&[T]> Preserves Elements
+    proptest! {
+        #[test]
+        fn prop_from_slice_preserves_elements(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let slice = elements.as_slice();
+            let trueno_vec: TruenoVec<i32> = TruenoVec::from(slice);
+
+            prop_assert_eq!(trueno_vec.len(), elements.len());
+            for (i, &expected_val) in elements.iter().enumerate() {
+                prop_assert_eq!(trueno_vec.get(i), Some(&expected_val));
+            }
+        }
+    }
+
+    // Property 18: FromIterator Matches Vec::from_iter
+    proptest! {
+        #[test]
+        fn prop_from_iterator_matches_vec(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let trueno_vec: TruenoVec<i32> = elements.iter().copied().collect();
+            let std_vec: Vec<i32> = elements.iter().copied().collect();
+
+            prop_assert_eq!(trueno_vec.len(), std_vec.len());
+            for (i, &expected_val) in std_vec.iter().enumerate() {
+                prop_assert_eq!(trueno_vec.get(i), Some(&expected_val));
+            }
+        }
+    }
+
+    // Property 19: Extend Matches Vec::extend
+    proptest! {
+        #[test]
+        fn prop_extend_matches_vec(
+            initial in prop::collection::vec(any::<i32>(), 0..50),
+            extension in prop::collection::vec(any::<i32>(), 0..50)
+        ) {
+            let mut trueno_vec = TruenoVec::new();
+            let mut std_vec = Vec::new();
+
+            for &elem in &initial {
+                trueno_vec.push(elem);
+                std_vec.push(elem);
+            }
+
+            trueno_vec.extend(extension.iter().copied());
+            std_vec.extend(extension.iter().copied());
+
+            prop_assert_eq!(trueno_vec.len(), std_vec.len());
+            for (i, &expected_val) in std_vec.iter().enumerate() {
+                prop_assert_eq!(trueno_vec.get(i), Some(&expected_val));
+            }
+        }
+    }
+
+    // Property 20: Extend Maintains Length Invariant
+    proptest! {
+        #[test]
+        fn prop_extend_length_invariant(
+            initial in prop::collection::vec(any::<i32>(), 0..50),
+            extension in prop::collection::vec(any::<i32>(), 0..50)
+        ) {
+            let mut trueno_vec = TruenoVec::new();
+
+            for elem in &initial {
+                trueno_vec.push(*elem);
+            }
+
+            let len_before = trueno_vec.len();
+            trueno_vec.extend(extension.iter().copied());
+
+            prop_assert_eq!(trueno_vec.len(), len_before + extension.len());
+        }
+    }
+
+    // Property 21: Multiple Extends Preserve Order
+    proptest! {
+        #[test]
+        fn prop_multiple_extends_preserve_order(
+            batch1 in prop::collection::vec(any::<i32>(), 0..30),
+            batch2 in prop::collection::vec(any::<i32>(), 0..30),
+            batch3 in prop::collection::vec(any::<i32>(), 0..30)
+        ) {
+            let mut trueno_vec = TruenoVec::new();
+            trueno_vec.extend(batch1.iter().copied());
+            trueno_vec.extend(batch2.iter().copied());
+            trueno_vec.extend(batch3.iter().copied());
+
+            let mut expected = Vec::new();
+            expected.extend(&batch1);
+            expected.extend(&batch2);
+            expected.extend(&batch3);
+
+            prop_assert_eq!(trueno_vec.len(), expected.len());
+            for (i, &expected_val) in expected.iter().enumerate() {
+                prop_assert_eq!(trueno_vec.get(i), Some(&expected_val));
+            }
+        }
+    }
+
+    // Property 22: FromIterator with Range
+    proptest! {
+        #[test]
+        fn prop_from_iterator_range(start in 0i32..100, count in 0usize..100) {
+            let end = start.saturating_add(i32::try_from(count).unwrap_or(i32::MAX));
+            let trueno_vec: TruenoVec<i32> = (start..end).collect();
+
+            prop_assert_eq!(trueno_vec.len(), count);
+            for (i, expected_val) in (start..end).enumerate() {
+                prop_assert_eq!(trueno_vec.get(i), Some(&expected_val));
+            }
+        }
+    }
+
+    // Property 23: Conversion Roundtrip Vec -> TruenoVec -> Iter -> Vec
+    proptest! {
+        #[test]
+        fn prop_conversion_roundtrip(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let original = elements.clone();
+            let trueno_vec: TruenoVec<i32> = TruenoVec::from(elements);
+            let back_to_vec: Vec<i32> = trueno_vec.iter().copied().collect();
+
+            prop_assert_eq!(original, back_to_vec);
+        }
+    }
+
+    // Property 24: Extend with Empty Iterator is No-op
+    proptest! {
+        #[test]
+        fn prop_extend_empty_noop(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let mut trueno_vec = TruenoVec::new();
+            for elem in &elements {
+                trueno_vec.push(*elem);
+            }
+
+            let len_before = trueno_vec.len();
+            let empty: Vec<i32> = vec![];
+            trueno_vec.extend(empty);
+
+            prop_assert_eq!(trueno_vec.len(), len_before);
+            for (i, &expected_val) in elements.iter().enumerate() {
+                prop_assert_eq!(trueno_vec.get(i), Some(&expected_val));
+            }
+        }
+    }
+
+    // Property 25: FromIterator Filter and Map Composition
+    proptest! {
+        #[test]
+        fn prop_from_iterator_filter_map(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let trueno_vec: TruenoVec<i32> = elements
+                .iter()
+                .filter(|&&x| x % 2 == 0)
+                .map(|&x| x.wrapping_mul(2))
+                .collect();
+
+            let expected: Vec<i32> = elements
+                .iter()
+                .filter(|&&x| x % 2 == 0)
+                .map(|&x| x.wrapping_mul(2))
+                .collect();
+
+            prop_assert_eq!(trueno_vec.len(), expected.len());
+            for (i, &expected_val) in expected.iter().enumerate() {
+                prop_assert_eq!(trueno_vec.get(i), Some(&expected_val));
+            }
+        }
+    }
+
+    // Property 26: Extend Maintains Capacity Bound
+    proptest! {
+        #[test]
+        fn prop_extend_capacity_bound(
+            initial in prop::collection::vec(any::<i32>(), 0..50),
+            extension in prop::collection::vec(any::<i32>(), 0..50)
+        ) {
+            let mut trueno_vec = TruenoVec::new();
+            for elem in &initial {
+                trueno_vec.push(*elem);
+            }
+
+            trueno_vec.extend(extension.iter().copied());
+
+            // Capacity must always be >= len
+            prop_assert!(trueno_vec.capacity() >= trueno_vec.len());
+        }
+    }
+
+    // Property 27: From<Vec<T>> and From<&[T]> Produce Same Result
+    proptest! {
+        #[test]
+        fn prop_from_vec_and_slice_equivalent(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let from_vec: TruenoVec<i32> = TruenoVec::from(elements.clone());
+            let from_slice: TruenoVec<i32> = TruenoVec::from(elements.as_slice());
+
+            prop_assert_eq!(from_vec.len(), from_slice.len());
+            for i in 0..from_vec.len() {
+                prop_assert_eq!(from_vec.get(i), from_slice.get(i));
+            }
+        }
+    }
+
+    // Property 28: Collect and Extend are Equivalent for Same Data
+    proptest! {
+        #[test]
+        fn prop_collect_extend_equivalent(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let collected: TruenoVec<i32> = elements.iter().copied().collect();
+
+            let mut extended = TruenoVec::new();
+            extended.extend(elements.iter().copied());
+
+            prop_assert_eq!(collected.len(), extended.len());
+            for i in 0..collected.len() {
+                prop_assert_eq!(collected.get(i), extended.get(i));
             }
         }
     }
