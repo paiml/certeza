@@ -1,0 +1,15 @@
+# cargo-mutants configuration for certeza
+# Exclude Kani formal verification code from mutation testing
+# since it requires special tooling and doesn't run in normal test suite
+
+# Exclude specific regions of code
+exclude_re = [
+    # Kani verification module - requires Kani toolchain to run
+    "^.*verification::.*$"
+]
+
+# Timeout for individual test runs (in seconds)
+timeout = 60
+
+# Show test output for failed mutants
+show_times = false

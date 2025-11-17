@@ -529,6 +529,26 @@ mod tests {
     }
 
     #[test]
+    fn test_get_mut_boundary() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        // Valid indices should work
+        assert!(vec.get_mut(0).is_some());
+        assert!(vec.get_mut(1).is_some());
+        assert!(vec.get_mut(2).is_some());
+
+        // Index equal to len should return None
+        assert_eq!(vec.get_mut(3), None);
+
+        // Higher indices should return None
+        assert_eq!(vec.get_mut(4), None);
+        assert_eq!(vec.get_mut(100), None);
+    }
+
+    #[test]
     fn test_growth() {
         let mut vec = TruenoVec::new();
         assert_eq!(vec.capacity(), 0);
@@ -590,6 +610,33 @@ mod tests {
         let vec: TruenoVec<i32> = TruenoVec::default();
         assert_eq!(vec.len(), 0);
         assert_eq!(vec.capacity(), 0);
+    }
+
+    #[test]
+    fn test_drop_empty_vector() {
+        // Test that dropping an empty vector (capacity=0) doesn't crash
+        {
+            let vec: TruenoVec<i32> = TruenoVec::new();
+            assert_eq!(vec.capacity(), 0);
+        } // vec dropped here - should not attempt deallocation
+
+        // Test with capacity > 0 but no elements
+        {
+            let vec: TruenoVec<i32> = TruenoVec::with_capacity(10);
+            assert_eq!(vec.capacity(), 10);
+            assert_eq!(vec.len(), 0);
+        } // vec dropped here - should deallocate
+
+        // Test after popping all elements
+        {
+            let mut vec = TruenoVec::new();
+            vec.push(1);
+            vec.push(2);
+            vec.pop();
+            vec.pop();
+            assert_eq!(vec.len(), 0);
+            assert!(vec.capacity() > 0);
+        } // vec dropped here - should deallocate despite len=0
     }
 }
 
