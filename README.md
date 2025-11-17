@@ -122,8 +122,8 @@ fn main() {
 - **Zero-Cost Abstraction**: 24-byte overhead (ptr + len + capacity)
 - **Full Iterator Support**: Bidirectional iterators (`iter`, `iter_mut`, `into_iter`)
 - **Advanced Operations**: `insert`, `remove`, `clear` with optimal performance
-- **Complete Trait Support**: All standard collection traits (Deref, Clone, Hash, Ord, etc.)
-- **Comprehensive Testing**: 231 tests with 97.7% mutation score
+- **Complete Trait Support**: All standard collection traits (Deref, Clone, Hash, Ord, Display, Borrow, etc.)
+- **Comprehensive Testing**: 260 tests with 97.7% mutation score
 
 ### Complete Trait Implementation
 
@@ -152,8 +152,12 @@ TruenoVec implements **all standard Rust collection traits** for full `std::Vec`
 - `Deref<Target=[T]>`, `DerefMut` (automatic slice coercion)
 - `AsRef<[T]>`, `AsMut<[T]>` (generic bounds)
 
-**Debug:**
+**Display & Formatting (Phase 3.3):**
 - `Debug` (pretty printing)
+- `Display` (user-friendly output)
+
+**Advanced Borrowing (Phase 3.3):**
+- `Borrow<[T]>`, `BorrowMut<[T]>` (HashMap/BTreeMap lookup support)
 
 This enables TruenoVec to be used in:
 - ✅ Generic algorithms accepting `&[T]` or `AsRef<[T]>`
@@ -164,9 +168,9 @@ This enables TruenoVec to be used in:
 
 ### Comprehensive Test Coverage
 
-**Total Tests: 231 tests across all tiers** ✅ **97.7% mutation score**
+**Total Tests: 260 tests across all tiers** ✅ **97.7% mutation score**
 
-#### Tier 1: Unit Tests (150+ tests)
+#### Tier 1: Unit Tests (180+ tests)
 - Basic operations: `new`, `with_capacity`, `push`, `pop`, `clear`
 - Index access: `get`, `get_mut` with bounds checking
 - Advanced operations: `insert`, `remove` at various positions
@@ -184,9 +188,13 @@ This enables TruenoVec to be used in:
   - PartialOrd: `<`, `>`, `<=`, `>=` operators
   - Ord: Total ordering, BTreeMap/BTreeSet support
   - Hash: HashMap/HashSet key support
+- **Phase 3.3 Display & Borrow Traits** (22 tests):
+  - Display: User-friendly formatting, consistency with std::Vec
+  - Borrow/BorrowMut: Generic function support, HashMap lookup compatibility
+  - Slice operation interoperability
 - Sub-second execution
 
-#### Tier 2: Property-Based Tests (53 properties)
+#### Tier 2: Property-Based Tests (60 properties)
 - Length invariant after push operations
 - Capacity bound (capacity >= len) maintained
 - Push/pop symmetry (inverse operations)
@@ -212,6 +220,11 @@ This enables TruenoVec to be used in:
   - Hash consistency with Eq
   - HashMap/BTreeMap operations correctness
   - Sorting and lexicographic ordering
+- **Phase 3.3 Display/Borrow Properties** (7 properties):
+  - Display format consistency with std::Vec Debug output
+  - Borrow equivalence with AsRef/AsMut
+  - Display respects element Display implementation
+  - Slice operation correctness through Borrow
 
 #### Tier 2: Integration Tests (26 scenarios)
 - **Basic Integration Tests**:
