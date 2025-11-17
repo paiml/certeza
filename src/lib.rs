@@ -32,10 +32,16 @@
 //! ## Example
 //!
 //! ```rust
-//! use certeza::add;
+//! use certeza::TruenoVec;
 //!
-//! let result = add(2, 2);
-//! assert_eq!(result, 4);
+//! let mut vec = TruenoVec::new();
+//! vec.push(1);
+//! vec.push(2);
+//! vec.push(3);
+//!
+//! assert_eq!(vec.len(), 3);
+//! assert_eq!(vec.get(1), Some(&2));
+//! assert_eq!(vec.pop(), Some(3));
 //! ```
 //!
 //! ## Philosophy
@@ -49,6 +55,10 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
+
+pub mod vec;
+
+pub use vec::TruenoVec;
 
 /// Adds two numbers together.
 ///
