@@ -73,7 +73,6 @@ use std::ptr::{self, NonNull};
 /// assert_eq!(v.len(), 2);
 /// assert_eq!(v.pop(), Some(2));
 /// ```
-#[derive(Debug)]
 pub struct TruenoVec<T> {
     ptr: NonNull<T>,
     len: usize,
@@ -897,6 +896,77 @@ impl<T: Clone> Clone for TruenoVec<T> {
             new_vec.push(elem.clone());
         }
         new_vec
+    }
+}
+
+// ============================================================================
+// PartialEq and Eq Trait Implementations
+// ============================================================================
+
+impl<T: PartialEq> PartialEq for TruenoVec<T> {
+    /// Compares two vectors for equality.
+    ///
+    /// Two vectors are equal if they have the same length and all elements
+    /// at corresponding indices are equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec1 = TruenoVec::new();
+    /// vec1.push(1);
+    /// vec1.push(2);
+    ///
+    /// let mut vec2 = TruenoVec::new();
+    /// vec2.push(1);
+    /// vec2.push(2);
+    ///
+    /// assert_eq!(vec1, vec2);
+    ///
+    /// vec2.push(3);
+    /// assert_ne!(vec1, vec2);
+    /// ```
+    fn eq(&self, other: &Self) -> bool {
+        // First check lengths - fast path
+        if self.len != other.len {
+            return false;
+        }
+
+        // Compare elements
+        for i in 0..self.len {
+            if self.get(i) != other.get(i) {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+impl<T: Eq> Eq for TruenoVec<T> {}
+
+// ============================================================================
+// Debug Trait Implementation
+// ============================================================================
+
+impl<T: std::fmt::Debug> std::fmt::Debug for TruenoVec<T> {
+    /// Formats the vector for debugging output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// assert_eq!(format!("{:?}", vec), "[1, 2, 3]");
+    /// ```
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
@@ -1728,6 +1798,164 @@ mod tests {
         } // vec1 dropped here - should drop 2 more elements
 
         assert_eq!(counter.load(Ordering::SeqCst), 4);
+    }
+
+    // ========================================================================
+    // PartialEq and Eq Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_equality_same_elements() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(1);
+        vec1.push(2);
+        vec1.push(3);
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(1);
+        vec2.push(2);
+        vec2.push(3);
+
+        assert_eq!(vec1, vec2);
+    }
+
+    #[test]
+    fn test_equality_empty_vectors() {
+        let vec1: TruenoVec<i32> = TruenoVec::new();
+        let vec2: TruenoVec<i32> = TruenoVec::new();
+
+        assert_eq!(vec1, vec2);
+    }
+
+    #[test]
+    fn test_inequality_different_length() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(1);
+        vec1.push(2);
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(1);
+        vec2.push(2);
+        vec2.push(3);
+
+        assert_ne!(vec1, vec2);
+    }
+
+    #[test]
+    fn test_inequality_different_elements() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(1);
+        vec1.push(2);
+        vec1.push(3);
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(1);
+        vec2.push(5);
+        vec2.push(3);
+
+        assert_ne!(vec1, vec2);
+    }
+
+    #[test]
+    fn test_equality_with_strings() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(String::from("hello"));
+        vec1.push(String::from("world"));
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(String::from("hello"));
+        vec2.push(String::from("world"));
+
+        assert_eq!(vec1, vec2);
+    }
+
+    #[test]
+    fn test_equality_reflexive() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+
+        assert_eq!(vec, vec);
+    }
+
+    #[test]
+    fn test_equality_symmetric() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(1);
+        vec1.push(2);
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(1);
+        vec2.push(2);
+
+        assert_eq!(vec1, vec2);
+        assert_eq!(vec2, vec1);
+    }
+
+    #[test]
+    fn test_equality_transitive() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(1);
+        vec1.push(2);
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(1);
+        vec2.push(2);
+
+        let mut vec3 = TruenoVec::new();
+        vec3.push(1);
+        vec3.push(2);
+
+        assert_eq!(vec1, vec2);
+        assert_eq!(vec2, vec3);
+        assert_eq!(vec1, vec3);
+    }
+
+    // ========================================================================
+    // Debug Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_debug_empty() {
+        let vec: TruenoVec<i32> = TruenoVec::new();
+        assert_eq!(format!("{vec:?}"), "[]");
+    }
+
+    #[test]
+    fn test_debug_single_element() {
+        let mut vec = TruenoVec::new();
+        vec.push(42);
+        assert_eq!(format!("{vec:?}"), "[42]");
+    }
+
+    #[test]
+    fn test_debug_multiple_elements() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+        assert_eq!(format!("{vec:?}"), "[1, 2, 3]");
+    }
+
+    #[test]
+    fn test_debug_with_strings() {
+        let mut vec = TruenoVec::new();
+        vec.push(String::from("hello"));
+        vec.push(String::from("world"));
+        assert_eq!(format!("{vec:?}"), "[\"hello\", \"world\"]");
+    }
+
+    #[test]
+    fn test_debug_nested() {
+        let mut inner = TruenoVec::new();
+        inner.push(1);
+        inner.push(2);
+
+        let mut outer = TruenoVec::new();
+        outer.push(inner.clone());
+        outer.push(inner);
+
+        assert_eq!(format!("{outer:?}"), "[[1, 2], [1, 2]]");
     }
 }
 
