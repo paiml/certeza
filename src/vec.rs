@@ -1475,7 +1475,7 @@ impl<T: std::hash::Hash> std::hash::Hash for TruenoVec<T> {
         // Hash the length first (same as std::Vec)
         self.len.hash(state);
         // Hash each element
-        for elem in self.iter() {
+        for elem in self {
             elem.hash(state);
         }
     }
@@ -1487,7 +1487,7 @@ impl<T: std::hash::Hash> std::hash::Hash for TruenoVec<T> {
 
 /// Display trait for user-friendly formatting
 ///
-/// Formats the vector as `[elem1, elem2, ...]` similar to std::Vec.
+/// Formats the vector as `[elem1, elem2, ...]` similar to `std::Vec`.
 ///
 /// # Examples
 ///
@@ -1504,7 +1504,7 @@ impl<T: std::fmt::Display> std::fmt::Display for TruenoVec<T> {
             if i > 0 {
                 write!(f, ", ")?;
             }
-            write!(f, "{}", elem)?;
+            write!(f, "{elem}")?;
         }
         write!(f, "]")
     }
@@ -1512,8 +1512,8 @@ impl<T: std::fmt::Display> std::fmt::Display for TruenoVec<T> {
 
 /// Borrow<[T]> trait for advanced borrowing patterns
 ///
-/// Enables using TruenoVec with APIs that accept `Borrow<[T]>` bounds,
-/// particularly useful for HashMap and BTreeMap lookups.
+/// Enables using `TruenoVec` with APIs that accept `Borrow<[T]>` bounds,
+/// particularly useful for `HashMap` and `BTreeMap` lookups.
 ///
 /// # Examples
 ///
@@ -1531,9 +1531,9 @@ impl<T> std::borrow::Borrow<[T]> for TruenoVec<T> {
     }
 }
 
-/// BorrowMut<[T]> trait for advanced mutable borrowing patterns
+/// `BorrowMut<[T]>` trait for advanced mutable borrowing patterns
 ///
-/// Enables using TruenoVec with APIs that accept `BorrowMut<[T]>` bounds.
+/// Enables using `TruenoVec` with APIs that accept `BorrowMut<[T]>` bounds.
 ///
 /// # Examples
 ///
