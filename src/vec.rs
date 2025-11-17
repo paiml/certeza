@@ -464,6 +464,62 @@ impl<T> TruenoVec<T> {
         }
     }
 
+    /// Returns an immutable slice containing all elements of the vector.
+    ///
+    /// This provides a safe view into the vector's contents without copying.
+    ///
+    /// # Complexity
+    ///
+    /// O(1)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// let slice = vec.as_slice();
+    /// assert_eq!(slice, &[1, 2, 3]);
+    /// assert_eq!(slice.len(), 3);
+    /// ```
+    #[must_use]
+    pub const fn as_slice(&self) -> &[T] {
+        // SAFETY: ptr points to len initialized elements
+        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.len) }
+    }
+
+    /// Returns a mutable slice containing all elements of the vector.
+    ///
+    /// This provides a safe mutable view into the vector's contents without copying.
+    ///
+    /// # Complexity
+    ///
+    /// O(1)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// let slice = vec.as_slice_mut();
+    /// slice[1] = 10;
+    /// assert_eq!(vec.get(1), Some(&10));
+    /// ```
+    #[must_use]
+    pub const fn as_slice_mut(&mut self) -> &mut [T] {
+        // SAFETY: ptr points to len initialized elements
+        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
+    }
+
     /// Doubles the capacity of the vector.
     ///
     /// Uses a growth factor of 2x for exponential growth, ensuring amortized O(1) push.
@@ -1131,6 +1187,173 @@ impl<T: std::fmt::Debug> std::fmt::Debug for TruenoVec<T> {
     /// ```
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+// ============================================================================
+// Phase 3.1 Ergonomic Trait Implementations (Deref/AsRef)
+// ============================================================================
+
+impl<T> std::ops::Deref for TruenoVec<T> {
+    type Target = [T];
+
+    /// Dereferences the `TruenoVec<T>` to a slice `&[T]`.
+    ///
+    /// This allows `TruenoVec` to be used seamlessly with any function
+    /// that accepts a slice, enabling automatic coercion and access to
+    /// all slice methods.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// // Deref coercion allows slice methods
+    /// assert_eq!(vec.len(), 3);
+    /// assert_eq!(vec.first(), Some(&1));
+    /// assert_eq!(vec.last(), Some(&3));
+    ///
+    /// // Works with functions expecting slices
+    /// fn sum_slice(s: &[i32]) -> i32 {
+    ///     s.iter().sum()
+    /// }
+    /// assert_eq!(sum_slice(&vec), 6);
+    /// ```
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
+    }
+}
+
+impl<T> std::ops::DerefMut for TruenoVec<T> {
+    /// Mutably dereferences the `TruenoVec<T>` to a mutable slice `&mut [T]`.
+    ///
+    /// This allows mutable access to slice methods through deref coercion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(3);
+    /// vec.push(1);
+    /// vec.push(2);
+    ///
+    /// // DerefMut coercion allows mutable slice methods
+    /// vec.sort();
+    /// assert_eq!(vec.as_slice(), &[1, 2, 3]);
+    ///
+    /// vec.reverse();
+    /// assert_eq!(vec.as_slice(), &[3, 2, 1]);
+    /// ```
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_slice_mut()
+    }
+}
+
+impl<T> AsRef<[T]> for TruenoVec<T> {
+    /// Returns a reference to the vector's contents as a slice.
+    ///
+    /// This enables `TruenoVec` to be used with generic functions that
+    /// accept `AsRef<[T]>` bounds, a common pattern in the Rust standard library.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// // Works with generic functions using AsRef<[T]>
+    /// fn process<T: AsRef<[i32]>>(data: T) -> i32 {
+    ///     data.as_ref().iter().sum()
+    /// }
+    ///
+    /// assert_eq!(process(&vec), 6);
+    /// assert_eq!(process(vec![1, 2, 3]), 6);
+    /// ```
+    fn as_ref(&self) -> &[T] {
+        self.as_slice()
+    }
+}
+
+impl<T> AsMut<[T]> for TruenoVec<T> {
+    /// Returns a mutable reference to the vector's contents as a slice.
+    ///
+    /// This enables `TruenoVec` to be used with generic functions that
+    /// accept `AsMut<[T]>` bounds, enabling mutable slice operations.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// // Works with generic functions using AsMut<[T]>
+    /// fn double_in_place<T: AsMut<[i32]>>(mut data: T) {
+    ///     for x in data.as_mut() {
+    ///         *x *= 2;
+    ///     }
+    /// }
+    ///
+    /// double_in_place(&mut vec);
+    /// assert_eq!(vec.as_slice(), &[2, 4, 6]);
+    /// ```
+    fn as_mut(&mut self) -> &mut [T] {
+        self.as_slice_mut()
+    }
+}
+
+impl<T> AsRef<Self> for TruenoVec<T> {
+    /// Returns a reference to self.
+    ///
+    /// This implementation allows `TruenoVec` to work with APIs that
+    /// require `AsRef<TruenoVec<T>>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let vec = TruenoVec::from(vec![1, 2, 3]);
+    /// let vec_ref: &TruenoVec<i32> = vec.as_ref();
+    /// assert_eq!(vec_ref.len(), 3);
+    /// ```
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
+impl<T> AsMut<Self> for TruenoVec<T> {
+    /// Returns a mutable reference to self.
+    ///
+    /// This implementation allows `TruenoVec` to work with APIs that
+    /// require `AsMut<TruenoVec<T>>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::from(vec![1, 2, 3]);
+    /// let vec_mut: &mut TruenoVec<i32> = vec.as_mut();
+    /// vec_mut.push(4);
+    /// assert_eq!(vec_mut.len(), 4);
+    /// ```
+    fn as_mut(&mut self) -> &mut Self {
+        self
     }
 }
 
@@ -2432,6 +2655,522 @@ mod tests {
             assert_eq!(extended.get(i), Some(&i32::try_from(i).unwrap()));
         }
     }
+
+    // ========================================================================
+    // Phase 3.1: Deref/DerefMut Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_deref_to_slice() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        // Deref coercion to slice
+        let slice: &[i32] = &vec;
+        assert_eq!(slice.len(), 3);
+        assert_eq!(slice[0], 1);
+        assert_eq!(slice[1], 2);
+        assert_eq!(slice[2], 3);
+    }
+
+    #[test]
+    fn test_deref_slice_methods() {
+        let mut vec = TruenoVec::new();
+        vec.push(10);
+        vec.push(20);
+        vec.push(30);
+
+        // Use slice methods through deref
+        assert_eq!(vec.first(), Some(&10));
+        assert_eq!(vec.last(), Some(&30));
+        assert!(!vec.is_empty());
+        assert_eq!(vec.len(), 3);
+    }
+
+    #[test]
+    fn test_deref_empty_vec() {
+        let vec: TruenoVec<i32> = TruenoVec::new();
+        let slice: &[i32] = &vec;
+        assert_eq!(slice.len(), 0);
+        assert!(slice.is_empty());
+        assert_eq!(vec.first(), None);
+        assert_eq!(vec.last(), None);
+    }
+
+    #[test]
+    fn test_deref_with_functions() {
+        fn sum_slice(s: &[i32]) -> i32 {
+            s.iter().sum()
+        }
+
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+        vec.push(4);
+
+        // Deref coercion allows passing TruenoVec to functions expecting &[T]
+        assert_eq!(sum_slice(&vec), 10);
+    }
+
+    #[test]
+    fn test_deref_iter() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        // Use slice's iter method through deref
+        let sum: i32 = vec.iter().sum();
+        assert_eq!(sum, 6);
+
+        let doubled: Vec<i32> = vec.iter().map(|x| x * 2).collect();
+        assert_eq!(doubled, vec![2, 4, 6]);
+    }
+
+    #[test]
+    fn test_deref_contains() {
+        let mut vec = TruenoVec::new();
+        vec.push(5);
+        vec.push(10);
+        vec.push(15);
+
+        // Use slice's contains method through deref
+        assert!(vec.contains(&10));
+        assert!(!vec.contains(&20));
+    }
+
+    #[test]
+    fn test_deref_starts_with_ends_with() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+        vec.push(4);
+
+        // Use slice methods through deref
+        assert!(vec.starts_with(&[1, 2]));
+        assert!(vec.ends_with(&[3, 4]));
+        assert!(!vec.starts_with(&[2, 3]));
+    }
+
+    #[test]
+    fn test_deref_mut_to_slice() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        // DerefMut coercion to mutable slice
+        let slice: &mut [i32] = &mut vec;
+        slice[0] = 10;
+        slice[1] = 20;
+        slice[2] = 30;
+
+        assert_eq!(vec.get(0), Some(&10));
+        assert_eq!(vec.get(1), Some(&20));
+        assert_eq!(vec.get(2), Some(&30));
+    }
+
+    #[test]
+    fn test_deref_mut_sort() {
+        let mut vec = TruenoVec::new();
+        vec.push(3);
+        vec.push(1);
+        vec.push(4);
+        vec.push(2);
+
+        // Use mutable slice methods through DerefMut
+        vec.sort();
+        assert_eq!(vec.as_slice(), &[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn test_deref_mut_reverse() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        // Use reverse method through DerefMut
+        vec.reverse();
+        assert_eq!(vec.as_slice(), &[3, 2, 1]);
+    }
+
+    #[test]
+    fn test_deref_mut_fill() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        // Use fill method through DerefMut
+        vec.fill(42);
+        assert_eq!(vec.as_slice(), &[42, 42, 42]);
+    }
+
+    #[test]
+    fn test_deref_mut_swap() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        // Use swap method through DerefMut
+        vec.swap(0, 2);
+        assert_eq!(vec.as_slice(), &[3, 2, 1]);
+    }
+
+    #[test]
+    fn test_deref_mut_iter_mut() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        // Use iter_mut through DerefMut
+        for elem in vec.iter_mut() {
+            *elem *= 2;
+        }
+
+        assert_eq!(vec.as_slice(), &[2, 4, 6]);
+    }
+
+    #[test]
+    fn test_deref_mut_split_at_mut() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+        vec.push(4);
+
+        // Use split_at_mut through DerefMut
+        let (left, right) = vec.split_at_mut(2);
+        left[0] = 10;
+        right[0] = 30;
+
+        assert_eq!(vec.as_slice(), &[10, 2, 30, 4]);
+    }
+
+    // ========================================================================
+    // Phase 3.1: AsRef Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_as_ref_slice() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let slice: &[i32] = vec.as_ref();
+        assert_eq!(slice, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn test_as_ref_empty() {
+        let vec: TruenoVec<i32> = TruenoVec::new();
+        let slice: &[i32] = vec.as_ref();
+        assert_eq!(slice, &[]);
+        assert!(slice.is_empty());
+    }
+
+    #[test]
+    fn test_as_ref_generic_function() {
+        fn process<T: AsRef<[i32]>>(data: T) -> i32 {
+            data.as_ref().iter().sum()
+        }
+
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        assert_eq!(process(&vec), 6);
+        assert_eq!(process(vec![1, 2, 3]), 6);
+        assert_eq!(process(&[1, 2, 3]), 6);
+    }
+
+    #[test]
+    fn test_as_ref_with_strings() {
+        let mut vec = TruenoVec::new();
+        vec.push(String::from("hello"));
+        vec.push(String::from("world"));
+
+        let slice: &[String] = vec.as_ref();
+        assert_eq!(slice.len(), 2);
+        assert_eq!(slice[0], "hello");
+        assert_eq!(slice[1], "world");
+    }
+
+    #[test]
+    fn test_as_ref_trueno_vec() {
+        let vec = TruenoVec::from(vec![1, 2, 3]);
+        let vec_ref: &TruenoVec<i32> = vec.as_ref();
+        assert_eq!(vec_ref.len(), 3);
+        assert_eq!(vec_ref.get(0), Some(&1));
+    }
+
+    #[test]
+    fn test_as_ref_multiple_calls() {
+        let mut vec = TruenoVec::new();
+        vec.push(42);
+
+        let ref1: &[i32] = vec.as_ref();
+        let ref2: &[i32] = vec.as_ref();
+
+        // Multiple AsRef calls should return equivalent slices
+        assert_eq!(ref1, ref2);
+        assert_eq!(ref1.as_ptr(), ref2.as_ptr());
+    }
+
+    // ========================================================================
+    // Phase 3.1: AsMut Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_as_mut_slice() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let slice: &mut [i32] = vec.as_mut();
+        slice[0] = 10;
+        slice[2] = 30;
+
+        assert_eq!(vec.as_slice(), &[10, 2, 30]);
+    }
+
+    #[test]
+    fn test_as_mut_empty() {
+        let mut vec: TruenoVec<i32> = TruenoVec::new();
+        let slice: &mut [i32] = vec.as_mut();
+        assert_eq!(slice, &mut []);
+        assert!(slice.is_empty());
+    }
+
+    #[test]
+    fn test_as_mut_generic_function() {
+        fn double_in_place<T: AsMut<[i32]>>(mut data: T) {
+            for x in data.as_mut() {
+                *x *= 2;
+            }
+        }
+
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        double_in_place(&mut vec);
+        assert_eq!(vec.as_slice(), &[2, 4, 6]);
+
+        let mut std_vec = vec![1, 2, 3];
+        double_in_place(&mut std_vec);
+        assert_eq!(std_vec, vec![2, 4, 6]);
+    }
+
+    #[test]
+    fn test_as_mut_fill_via_generic() {
+        fn fill_with_value<T: AsMut<[i32]>>(mut data: T, value: i32) {
+            for x in data.as_mut() {
+                *x = value;
+            }
+        }
+
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        fill_with_value(&mut vec, 99);
+        assert_eq!(vec.as_slice(), &[99, 99, 99]);
+    }
+
+    #[test]
+    fn test_as_mut_trueno_vec() {
+        let mut vec = TruenoVec::from(vec![1, 2, 3]);
+        let vec_mut: &mut TruenoVec<i32> = vec.as_mut();
+        vec_mut.push(4);
+        vec_mut.push(5);
+
+        assert_eq!(vec.len(), 5);
+        assert_eq!(vec.as_slice(), &[1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_as_mut_sorting() {
+        fn sort_slice<T: AsMut<[i32]>>(mut data: T) {
+            data.as_mut().sort();
+        }
+
+        let mut vec = TruenoVec::new();
+        vec.push(3);
+        vec.push(1);
+        vec.push(4);
+        vec.push(2);
+
+        sort_slice(&mut vec);
+        assert_eq!(vec.as_slice(), &[1, 2, 3, 4]);
+    }
+
+    // ========================================================================
+    // Phase 3.1: as_slice and as_slice_mut Tests
+    // ========================================================================
+
+    #[test]
+    fn test_as_slice_basic() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let slice = vec.as_slice();
+        assert_eq!(slice, &[1, 2, 3]);
+        assert_eq!(slice.len(), 3);
+    }
+
+    #[test]
+    fn test_as_slice_empty() {
+        let vec: TruenoVec<i32> = TruenoVec::new();
+        let slice = vec.as_slice();
+        assert_eq!(slice, &[]);
+        assert!(slice.is_empty());
+    }
+
+    #[test]
+    fn test_as_slice_after_push() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        assert_eq!(vec.as_slice(), &[1]);
+
+        vec.push(2);
+        assert_eq!(vec.as_slice(), &[1, 2]);
+
+        vec.push(3);
+        assert_eq!(vec.as_slice(), &[1, 2, 3]);
+    }
+
+    #[test]
+    fn test_as_slice_mut_basic() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let slice = vec.as_slice_mut();
+        slice[1] = 20;
+
+        assert_eq!(vec.get(1), Some(&20));
+        assert_eq!(vec.as_slice(), &[1, 20, 3]);
+    }
+
+    #[test]
+    fn test_as_slice_mut_empty() {
+        let mut vec: TruenoVec<i32> = TruenoVec::new();
+        let slice = vec.as_slice_mut();
+        assert_eq!(slice, &mut []);
+        assert!(slice.is_empty());
+    }
+
+    #[test]
+    fn test_as_slice_mut_modify_all() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        for elem in vec.as_slice_mut() {
+            *elem *= 10;
+        }
+
+        assert_eq!(vec.as_slice(), &[10, 20, 30]);
+    }
+
+    // ========================================================================
+    // Phase 3.1: Integration Tests
+    // ========================================================================
+
+    #[test]
+    fn test_deref_and_as_ref_consistency() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let via_deref: &[i32] = &vec;
+        let via_as_ref: &[i32] = vec.as_ref();
+        let via_as_slice = vec.as_slice();
+
+        assert_eq!(via_deref, via_as_ref);
+        assert_eq!(via_deref, via_as_slice);
+        assert_eq!(via_deref.as_ptr(), via_as_ref.as_ptr());
+        assert_eq!(via_deref.as_ptr(), via_as_slice.as_ptr());
+    }
+
+    #[test]
+    fn test_deref_mut_and_as_mut_consistency() {
+        let mut vec1 = TruenoVec::from(vec![1, 2, 3]);
+        let mut vec2 = TruenoVec::from(vec![1, 2, 3]);
+
+        let slice1: &mut [i32] = &mut vec1;
+        let slice2: &mut [i32] = vec2.as_mut();
+
+        slice1[0] = 10;
+        slice2[0] = 10;
+
+        assert_eq!(vec1.as_slice(), vec2.as_slice());
+    }
+
+    #[test]
+    fn test_slice_methods_comprehensive() {
+        let mut vec = TruenoVec::new();
+        for i in 0..10 {
+            vec.push(i);
+        }
+
+        // Test various slice methods through Deref
+        assert_eq!(vec.first(), Some(&0));
+        assert_eq!(vec.last(), Some(&9));
+        assert!(vec.contains(&5));
+        assert!(!vec.contains(&20));
+        let slice = vec.as_slice();
+        assert_eq!(&slice[2..5], &[2, 3, 4]);
+        assert_eq!(slice.get(5..8), Some(&[5, 6, 7][..]));
+    }
+
+    #[test]
+    fn test_mutable_slice_methods_comprehensive() {
+        let mut vec = TruenoVec::from(vec![5, 2, 8, 1, 9, 3]);
+
+        // Sort through DerefMut
+        vec.sort();
+        assert_eq!(vec.as_slice(), &[1, 2, 3, 5, 8, 9]);
+
+        // Reverse
+        vec.reverse();
+        assert_eq!(vec.as_slice(), &[9, 8, 5, 3, 2, 1]);
+
+        // Rotate
+        vec.rotate_left(2);
+        assert_eq!(vec.as_slice(), &[5, 3, 2, 1, 9, 8]);
+    }
+
+    #[test]
+    fn test_generic_function_interoperability() {
+        fn count_evens<T: AsRef<[i32]>>(data: T) -> usize {
+            data.as_ref().iter().filter(|&&x| x % 2 == 0).count()
+        }
+
+        let trueno_vec = TruenoVec::from(vec![1, 2, 3, 4, 5, 6]);
+        let std_vec = vec![1, 2, 3, 4, 5, 6];
+
+        assert_eq!(count_evens(&trueno_vec), count_evens(&std_vec));
+        assert_eq!(count_evens(&trueno_vec), 3);
+    }
 }
 
 // ============================================================================
@@ -3006,6 +3745,252 @@ mod property_tests {
             prop_assert_eq!(collected.len(), extended.len());
             for i in 0..collected.len() {
                 prop_assert_eq!(collected.get(i), extended.get(i));
+            }
+        }
+    }
+
+    // ========================================================================
+    // Phase 3.1: Property-Based Tests for Deref/AsRef Traits
+    // ========================================================================
+
+    // Property 29: Deref Produces Same Slice as as_slice
+    proptest! {
+        #[test]
+        fn prop_deref_equals_as_slice(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let vec = TruenoVec::from(elements.clone());
+            let via_deref: &[i32] = &vec;
+            let via_as_slice = vec.as_slice();
+
+            prop_assert_eq!(via_deref, via_as_slice);
+            prop_assert_eq!(via_deref.len(), via_as_slice.len());
+            prop_assert_eq!(via_deref.as_ptr(), via_as_slice.as_ptr());
+        }
+    }
+
+    // Property 30: AsRef<[T]> Produces Same Slice as as_slice
+    proptest! {
+        #[test]
+        fn prop_as_ref_equals_as_slice(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let vec = TruenoVec::from(elements.clone());
+            let via_as_ref: &[i32] = vec.as_ref();
+            let via_as_slice = vec.as_slice();
+
+            prop_assert_eq!(via_as_ref, via_as_slice);
+            prop_assert_eq!(via_as_ref.len(), vec.len());
+        }
+    }
+
+    // Property 31: Deref Enables Slice Methods
+    proptest! {
+        #[test]
+        fn prop_deref_slice_methods(elements in prop::collection::vec(any::<i32>(), 1..100)) {
+            let vec = TruenoVec::from(elements.clone());
+
+            // Test various slice methods through Deref
+            prop_assert_eq!(vec.first(), elements.first());
+            prop_assert_eq!(vec.last(), elements.last());
+            prop_assert_eq!(vec.len(), elements.len());
+            prop_assert_eq!(vec.is_empty(), elements.is_empty());
+
+            for elem in &elements {
+                prop_assert!(vec.contains(elem));
+            }
+        }
+    }
+
+    // Property 32: DerefMut Enables Mutable Slice Methods
+    proptest! {
+        #[test]
+        fn prop_deref_mut_sorting(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let mut vec = TruenoVec::from(elements.clone());
+            let mut std_vec = elements.clone();
+
+            // Sort using DerefMut
+            vec.sort();
+            std_vec.sort();
+
+            prop_assert_eq!(vec.len(), std_vec.len());
+            for i in 0..vec.len() {
+                prop_assert_eq!(vec.get(i), std_vec.get(i));
+            }
+        }
+    }
+
+    // Property 33: DerefMut Reverse Correctness
+    proptest! {
+        #[test]
+        fn prop_deref_mut_reverse(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let mut vec = TruenoVec::from(elements.clone());
+            let mut std_vec = elements.clone();
+
+            vec.reverse();
+            std_vec.reverse();
+
+            prop_assert_eq!(vec.len(), std_vec.len());
+            for i in 0..vec.len() {
+                prop_assert_eq!(vec.get(i), std_vec.get(i));
+            }
+        }
+    }
+
+    // Property 34: AsRef Generic Function Interoperability
+    proptest! {
+        #[test]
+        fn prop_as_ref_generic_interop(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            fn sum_via_as_ref<T: AsRef<[i32]>>(data: T) -> i32 {
+                data.as_ref().iter().fold(0i32, |acc, &x| acc.wrapping_add(x))
+            }
+
+            let vec = TruenoVec::from(elements.clone());
+            let sum_trueno = sum_via_as_ref(&vec);
+            let sum_std = sum_via_as_ref(&elements);
+
+            prop_assert_eq!(sum_trueno, sum_std);
+        }
+    }
+
+    // Property 35: AsMut Generic Function Interoperability
+    proptest! {
+        #[test]
+        fn prop_as_mut_generic_interop(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            fn double_via_as_mut<T: AsMut<[i32]>>(mut data: T) {
+                for x in data.as_mut() {
+                    *x = x.wrapping_mul(2);
+                }
+            }
+
+            let mut vec = TruenoVec::from(elements.clone());
+            let mut std_vec = elements.clone();
+
+            double_via_as_mut(&mut vec);
+            double_via_as_mut(&mut std_vec);
+
+            prop_assert_eq!(vec.len(), std_vec.len());
+            for i in 0..vec.len() {
+                prop_assert_eq!(vec.get(i), std_vec.get(i));
+            }
+        }
+    }
+
+    // Property 36: Deref Coercion with Function Parameters
+    proptest! {
+        #[test]
+        fn prop_deref_function_param(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            fn process_slice(s: &[i32]) -> i32 {
+                s.iter().map(|x| x.wrapping_mul(2)).fold(0i32, |acc, x| acc.wrapping_add(x))
+            }
+
+            let vec = TruenoVec::from(elements.clone());
+            let result_trueno = process_slice(&vec);
+            let result_std = process_slice(&elements);
+
+            prop_assert_eq!(result_trueno, result_std);
+        }
+    }
+
+    // Property 37: as_slice Length Invariant
+    proptest! {
+        #[test]
+        fn prop_as_slice_length_invariant(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let vec = TruenoVec::from(elements.clone());
+            let slice = vec.as_slice();
+
+            prop_assert_eq!(slice.len(), vec.len());
+            prop_assert_eq!(slice.len(), elements.len());
+        }
+    }
+
+    // Property 38: Slice Methods Equivalence with std::Vec
+    proptest! {
+        #[test]
+        fn prop_slice_methods_std_vec_equivalence(elements in prop::collection::vec(any::<i32>(), 1..100)) {
+            let vec = TruenoVec::from(elements.clone());
+
+            prop_assert_eq!(vec.first(), elements.first());
+            prop_assert_eq!(vec.last(), elements.last());
+            prop_assert_eq!(vec.is_empty(), elements.is_empty());
+
+            for (i, elem) in elements.iter().enumerate() {
+                prop_assert_eq!(vec.get(i), Some(elem));
+            }
+        }
+    }
+
+    // Property 39: DerefMut Fill Correctness
+    proptest! {
+        #[test]
+        fn prop_deref_mut_fill(elements in prop::collection::vec(any::<i32>(), 0..100), fill_value in any::<i32>()) {
+            let mut vec = TruenoVec::from(elements.clone());
+            vec.fill(fill_value);
+
+            prop_assert_eq!(vec.len(), elements.len());
+            for i in 0..vec.len() {
+                prop_assert_eq!(vec.get(i), Some(&fill_value));
+            }
+        }
+    }
+
+    // Property 40: Multiple Deref Calls Return Same Pointer
+    proptest! {
+        #[test]
+        fn prop_multiple_deref_same_pointer(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let vec = TruenoVec::from(elements);
+            let slice1: &[i32] = &vec;
+            let slice2: &[i32] = &vec;
+
+            prop_assert_eq!(slice1.as_ptr(), slice2.as_ptr());
+            prop_assert_eq!(slice1.len(), slice2.len());
+        }
+    }
+
+    // Property 41: AsRef and AsRef<TruenoVec> Consistency
+    proptest! {
+        #[test]
+        fn prop_as_ref_self_consistency(elements in prop::collection::vec(any::<i32>(), 0..100)) {
+            let vec = TruenoVec::from(elements.clone());
+            let vec_ref: &TruenoVec<i32> = vec.as_ref();
+
+            prop_assert_eq!(vec.len(), vec_ref.len());
+            prop_assert_eq!(vec.capacity(), vec_ref.capacity());
+            prop_assert_eq!(vec.is_empty(), vec_ref.is_empty());
+        }
+    }
+
+    // Property 42: Deref and Index Consistency
+    proptest! {
+        #[test]
+        fn prop_deref_index_consistency(elements in prop::collection::vec(any::<i32>(), 1..100)) {
+            let vec = TruenoVec::from(elements.clone());
+
+            for (i, elem) in elements.iter().enumerate() {
+                prop_assert_eq!(&vec[i], elem);
+                prop_assert_eq!(vec.get(i), Some(elem));
+            }
+        }
+    }
+
+    // Property 43: Slice Range Operations via Deref
+    proptest! {
+        #[test]
+        fn prop_slice_range_operations(elements in prop::collection::vec(any::<i32>(), 5..100)) {
+            let vec = TruenoVec::from(elements.clone());
+            let len = vec.len();
+
+            // Test various range operations
+            if len > 2 {
+                let range = 1..(len - 1);
+                let vec_slice = vec.as_slice();
+                prop_assert_eq!(&vec_slice[range.clone()], &elements[range]);
+            }
+
+            // Test starts_with
+            if len >= 3 {
+                prop_assert!(vec.starts_with(&elements[0..3]));
+            }
+
+            // Test ends_with
+            if len >= 3 {
+                prop_assert!(vec.ends_with(&elements[(len - 3)..len]));
             }
         }
     }
