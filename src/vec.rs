@@ -3065,7 +3065,7 @@ mod tests {
     fn test_as_ref_empty() {
         let vec: TruenoVec<i32> = TruenoVec::new();
         let slice: &[i32] = vec.as_ref();
-        assert_eq!(slice, &[]);
+        assert_eq!(slice, &[] as &[i32]);
         assert!(slice.is_empty());
     }
 
@@ -3140,7 +3140,7 @@ mod tests {
     fn test_as_mut_empty() {
         let mut vec: TruenoVec<i32> = TruenoVec::new();
         let slice: &mut [i32] = vec.as_mut();
-        assert_eq!(slice, &mut []);
+        assert_eq!(slice, &mut [] as &mut [i32]);
         assert!(slice.is_empty());
     }
 
@@ -3229,7 +3229,7 @@ mod tests {
     fn test_as_slice_empty() {
         let vec: TruenoVec<i32> = TruenoVec::new();
         let slice = vec.as_slice();
-        assert_eq!(slice, &[]);
+        assert_eq!(slice, &[] as &[i32]);
         assert!(slice.is_empty());
     }
 
@@ -3264,7 +3264,7 @@ mod tests {
     fn test_as_slice_mut_empty() {
         let mut vec: TruenoVec<i32> = TruenoVec::new();
         let slice = vec.as_slice_mut();
-        assert_eq!(slice, &mut []);
+        assert_eq!(slice, &mut [] as &mut [i32]);
         assert!(slice.is_empty());
     }
 
@@ -3527,8 +3527,8 @@ mod tests {
         let vec2 = TruenoVec::from(vec![1, 2, 3]);
         let vec3 = TruenoVec::from(vec![2, 1, 3]);
 
-        let mut vecs = [vec1.clone(), vec2.clone(), vec3.clone()];
-        vecs.sort();
+        let mut vectors = [vec1.clone(), vec2.clone(), vec3.clone()];
+        vectors.sort();
 
         assert_eq!(vectors[0], vec2);
         assert_eq!(vectors[1], vec3);
@@ -3782,10 +3782,12 @@ mod tests {
 
     #[test]
     fn test_sorting_collection_of_vectors() {
-        let mut vecs = [TruenoVec::from(vec![3, 2, 1]),
+        let mut vecs = [
+            TruenoVec::from(vec![3, 2, 1]),
             TruenoVec::from(vec![1, 2, 3]),
             TruenoVec::from(vec![2, 1, 3]),
-            TruenoVec::from(vec![1])];
+            TruenoVec::from(vec![1]),
+        ];
 
         vecs.sort_unstable();
 
@@ -3930,7 +3932,7 @@ mod tests {
 
         let vec: TruenoVec<i32> = TruenoVec::new();
         let slice: &[i32] = vec.borrow();
-        assert_eq!(slice, &[]);
+        assert_eq!(slice, &[] as &[i32]);
     }
 
     #[test]
@@ -4025,8 +4027,8 @@ mod tests {
         // and Vec's Borrow<[T]> matches
         let borrowed: &[i32] = key.borrow();
 
-        // Note: HashMap lookup with Borrow requires exact type match
-        // This demonstrates the trait works, even if lookup semantics differ
+        // Verify the map has the value and borrow works
+        assert_eq!(map.get(&vec![1, 2, 3]), Some(&"found"));
         assert_eq!(borrowed, &[1, 2, 3]);
     }
 
