@@ -1,0 +1,72 @@
+# PMAT Quality Gates Configuration
+# These gates enforce quality standards at commit/merge time
+
+[gates]
+# Static analysis
+run_clippy = true
+clippy_strict = true
+clippy_deny_warnings = true
+
+# Formatting
+run_rustfmt = true
+rustfmt_check = true
+
+# Testing
+run_tests = true
+test_all_features = true
+
+# Coverage
+check_coverage = true
+min_coverage = 85.0
+enforce_on_new_code = true
+
+# Complexity
+check_complexity = true
+max_complexity = 10
+max_cognitive_complexity = 10
+
+# Security
+run_cargo_audit = true
+run_cargo_deny = true
+deny_warnings = true
+
+# Documentation
+check_rustdoc = true
+min_rustdoc_coverage = 90.0
+require_examples = true
+
+# SATD (Technical Debt)
+check_satd = true
+max_satd = 0
+fail_on_satd = true
+
+# Mutation testing (Tier 3 - pre-merge/nightly)
+# Note: Run mutation testing separately as it takes hours
+run_mutation_on_commit = false
+min_mutation_score = 85.0
+
+[thresholds]
+# Cyclomatic complexity per function
+cyclomatic = 10
+
+# Cognitive complexity per function
+cognitive = 10
+
+# Maximum nesting depth
+nesting = 5
+
+# Lines of code per function
+max_lines_per_function = 50
+
+[rust_specific]
+# Rust-specific gates
+no_std_compatible = false
+forbid_unsafe = true
+check_unused_dependencies = true
+check_outdated_dependencies = true
+
+[ci]
+# CI/CD specific settings
+fail_fast = false
+parallel = true
+timeout_seconds = 1800
