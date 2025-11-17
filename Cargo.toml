@@ -11,6 +11,9 @@ categories = ["development-tools::testing", "development-tools::profiling"]
 readme = "README.md"
 documentation = "https://docs.rs/certeza"
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+
 [dependencies]
 # Core dependencies will be added as needed
 
