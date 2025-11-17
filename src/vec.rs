@@ -73,7 +73,6 @@ use std::ptr::{self, NonNull};
 /// assert_eq!(v.len(), 2);
 /// assert_eq!(v.pop(), Some(2));
 /// ```
-#[derive(Debug)]
 pub struct TruenoVec<T> {
     ptr: NonNull<T>,
     len: usize,
@@ -777,7 +776,10 @@ impl<T> IntoIterator for TruenoVec<T> {
     /// assert_eq!(sum, 6);
     /// ```
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter { vec: self, current: 0 }
+        IntoIter {
+            vec: self,
+            current: 0,
+        }
     }
 }
 
@@ -796,6 +798,175 @@ impl<'a, T> IntoIterator for &'a mut TruenoVec<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
+    }
+}
+
+// ============================================================================
+// Index Trait Implementations
+// ============================================================================
+
+impl<T> std::ops::Index<usize> for TruenoVec<T> {
+    type Output = T;
+
+    /// Returns a reference to an element at the given index.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the index is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(10);
+    /// vec.push(20);
+    /// vec.push(30);
+    ///
+    /// assert_eq!(vec[0], 10);
+    /// assert_eq!(vec[1], 20);
+    /// assert_eq!(vec[2], 30);
+    /// ```
+    fn index(&self, index: usize) -> &Self::Output {
+        let len = self.len;
+        self.get(index).unwrap_or_else(|| {
+            panic!("index out of bounds: the len is {len} but the index is {index}")
+        })
+    }
+}
+
+impl<T> std::ops::IndexMut<usize> for TruenoVec<T> {
+    /// Returns a mutable reference to an element at the given index.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the index is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(10);
+    /// vec.push(20);
+    /// vec.push(30);
+    ///
+    /// vec[1] = 25;
+    /// assert_eq!(vec[1], 25);
+    /// ```
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        let len = self.len;
+        self.get_mut(index).unwrap_or_else(|| {
+            panic!("index out of bounds: the len is {len} but the index is {index}")
+        })
+    }
+}
+
+// ============================================================================
+// Clone Trait Implementation
+// ============================================================================
+
+impl<T: Clone> Clone for TruenoVec<T> {
+    /// Creates a deep copy of the vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec1 = TruenoVec::new();
+    /// vec1.push(1);
+    /// vec1.push(2);
+    /// vec1.push(3);
+    ///
+    /// let mut vec2 = vec1.clone();
+    ///
+    /// // Modify vec2
+    /// vec2.push(4);
+    ///
+    /// // vec1 is unchanged
+    /// assert_eq!(vec1.len(), 3);
+    /// assert_eq!(vec2.len(), 4);
+    /// ```
+    fn clone(&self) -> Self {
+        let mut new_vec = Self::with_capacity(self.len);
+        for elem in self {
+            new_vec.push(elem.clone());
+        }
+        new_vec
+    }
+}
+
+// ============================================================================
+// PartialEq and Eq Trait Implementations
+// ============================================================================
+
+impl<T: PartialEq> PartialEq for TruenoVec<T> {
+    /// Compares two vectors for equality.
+    ///
+    /// Two vectors are equal if they have the same length and all elements
+    /// at corresponding indices are equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec1 = TruenoVec::new();
+    /// vec1.push(1);
+    /// vec1.push(2);
+    ///
+    /// let mut vec2 = TruenoVec::new();
+    /// vec2.push(1);
+    /// vec2.push(2);
+    ///
+    /// assert_eq!(vec1, vec2);
+    ///
+    /// vec2.push(3);
+    /// assert_ne!(vec1, vec2);
+    /// ```
+    fn eq(&self, other: &Self) -> bool {
+        // First check lengths - fast path
+        if self.len != other.len {
+            return false;
+        }
+
+        // Compare elements
+        for i in 0..self.len {
+            if self.get(i) != other.get(i) {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+impl<T: Eq> Eq for TruenoVec<T> {}
+
+// ============================================================================
+// Debug Trait Implementation
+// ============================================================================
+
+impl<T: std::fmt::Debug> std::fmt::Debug for TruenoVec<T> {
+    /// Formats the vector for debugging output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use certeza::TruenoVec;
+    ///
+    /// let mut vec = TruenoVec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// assert_eq!(format!("{:?}", vec), "[1, 2, 3]");
+    /// ```
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
@@ -1438,6 +1609,353 @@ mod tests {
         }
 
         assert_eq!(counter.load(Ordering::SeqCst), 5);
+    }
+
+    // ========================================================================
+    // Index Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_index_read() {
+        let mut vec = TruenoVec::new();
+        vec.push(10);
+        vec.push(20);
+        vec.push(30);
+
+        assert_eq!(vec[0], 10);
+        assert_eq!(vec[1], 20);
+        assert_eq!(vec[2], 30);
+    }
+
+    #[test]
+    fn test_index_mut_write() {
+        let mut vec = TruenoVec::new();
+        vec.push(10);
+        vec.push(20);
+        vec.push(30);
+
+        vec[1] = 25;
+        assert_eq!(vec[1], 25);
+        assert_eq!(vec.get(1), Some(&25));
+    }
+
+    #[test]
+    fn test_index_mut_compound_assignment() {
+        let mut vec = TruenoVec::new();
+        vec.push(10);
+        vec.push(20);
+        vec.push(30);
+
+        vec[0] += 5;
+        vec[1] *= 2;
+        vec[2] -= 10;
+
+        assert_eq!(vec[0], 15);
+        assert_eq!(vec[1], 40);
+        assert_eq!(vec[2], 20);
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds")]
+    fn test_index_out_of_bounds() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        let _ = vec[5]; // Should panic
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds")]
+    fn test_index_mut_out_of_bounds() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec[5] = 10; // Should panic
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds")]
+    fn test_index_empty_vector() {
+        let vec: TruenoVec<i32> = TruenoVec::new();
+        let _ = vec[0]; // Should panic
+    }
+
+    // ========================================================================
+    // Clone Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_clone_empty() {
+        let vec: TruenoVec<i32> = TruenoVec::new();
+        let cloned = vec.clone();
+
+        assert_eq!(vec.len(), cloned.len());
+        assert_eq!(vec.capacity(), cloned.capacity());
+        assert!(cloned.is_empty());
+    }
+
+    #[test]
+    fn test_clone_with_elements() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+
+        let cloned = vec.clone();
+
+        assert_eq!(vec.len(), cloned.len());
+        for i in 0..vec.len() {
+            assert_eq!(vec.get(i), cloned.get(i));
+        }
+    }
+
+    #[test]
+    fn test_clone_independence() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(1);
+        vec1.push(2);
+        vec1.push(3);
+
+        let mut vec2 = vec1.clone();
+
+        // Modify vec2
+        vec2.push(4);
+        vec2[0] = 10;
+
+        // vec1 should be unchanged
+        assert_eq!(vec1.len(), 3);
+        assert_eq!(vec1[0], 1);
+        assert_eq!(vec1[1], 2);
+        assert_eq!(vec1[2], 3);
+
+        // vec2 has the changes
+        assert_eq!(vec2.len(), 4);
+        assert_eq!(vec2[0], 10);
+        assert_eq!(vec2[1], 2);
+        assert_eq!(vec2[2], 3);
+        assert_eq!(vec2[3], 4);
+    }
+
+    #[test]
+    fn test_clone_with_strings() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(String::from("hello"));
+        vec1.push(String::from("world"));
+
+        let vec2 = vec1.clone();
+
+        assert_eq!(vec1.len(), vec2.len());
+        assert_eq!(vec1[0], "hello");
+        assert_eq!(vec2[0], "hello");
+        assert_eq!(vec1[1], "world");
+        assert_eq!(vec2[1], "world");
+    }
+
+    #[test]
+    fn test_clone_capacity() {
+        let mut vec = TruenoVec::with_capacity(100);
+        vec.push(1);
+        vec.push(2);
+
+        let cloned = vec.clone();
+
+        // Clone should have capacity equal to length (optimized allocation)
+        assert_eq!(cloned.capacity(), 2);
+        assert_eq!(cloned.len(), 2);
+    }
+
+    #[test]
+    fn test_clone_drop_independence() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+
+        struct DropCounter(Arc<AtomicUsize>);
+        impl Drop for DropCounter {
+            fn drop(&mut self) {
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        impl Clone for DropCounter {
+            fn clone(&self) -> Self {
+                Self(Arc::clone(&self.0))
+            }
+        }
+
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        {
+            let mut vec1 = TruenoVec::new();
+            vec1.push(DropCounter(Arc::clone(&counter)));
+            vec1.push(DropCounter(Arc::clone(&counter)));
+
+            {
+                let vec2 = vec1.clone();
+                assert_eq!(vec2.len(), 2);
+            } // vec2 dropped here - should drop 2 elements
+
+            assert_eq!(counter.load(Ordering::SeqCst), 2);
+        } // vec1 dropped here - should drop 2 more elements
+
+        assert_eq!(counter.load(Ordering::SeqCst), 4);
+    }
+
+    // ========================================================================
+    // PartialEq and Eq Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_equality_same_elements() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(1);
+        vec1.push(2);
+        vec1.push(3);
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(1);
+        vec2.push(2);
+        vec2.push(3);
+
+        assert_eq!(vec1, vec2);
+    }
+
+    #[test]
+    fn test_equality_empty_vectors() {
+        let vec1: TruenoVec<i32> = TruenoVec::new();
+        let vec2: TruenoVec<i32> = TruenoVec::new();
+
+        assert_eq!(vec1, vec2);
+    }
+
+    #[test]
+    fn test_inequality_different_length() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(1);
+        vec1.push(2);
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(1);
+        vec2.push(2);
+        vec2.push(3);
+
+        assert_ne!(vec1, vec2);
+    }
+
+    #[test]
+    fn test_inequality_different_elements() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(1);
+        vec1.push(2);
+        vec1.push(3);
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(1);
+        vec2.push(5);
+        vec2.push(3);
+
+        assert_ne!(vec1, vec2);
+    }
+
+    #[test]
+    fn test_equality_with_strings() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(String::from("hello"));
+        vec1.push(String::from("world"));
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(String::from("hello"));
+        vec2.push(String::from("world"));
+
+        assert_eq!(vec1, vec2);
+    }
+
+    #[test]
+    fn test_equality_reflexive() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+
+        assert_eq!(vec, vec);
+    }
+
+    #[test]
+    fn test_equality_symmetric() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(1);
+        vec1.push(2);
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(1);
+        vec2.push(2);
+
+        assert_eq!(vec1, vec2);
+        assert_eq!(vec2, vec1);
+    }
+
+    #[test]
+    fn test_equality_transitive() {
+        let mut vec1 = TruenoVec::new();
+        vec1.push(1);
+        vec1.push(2);
+
+        let mut vec2 = TruenoVec::new();
+        vec2.push(1);
+        vec2.push(2);
+
+        let mut vec3 = TruenoVec::new();
+        vec3.push(1);
+        vec3.push(2);
+
+        assert_eq!(vec1, vec2);
+        assert_eq!(vec2, vec3);
+        assert_eq!(vec1, vec3);
+    }
+
+    // ========================================================================
+    // Debug Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_debug_empty() {
+        let vec: TruenoVec<i32> = TruenoVec::new();
+        assert_eq!(format!("{vec:?}"), "[]");
+    }
+
+    #[test]
+    fn test_debug_single_element() {
+        let mut vec = TruenoVec::new();
+        vec.push(42);
+        assert_eq!(format!("{vec:?}"), "[42]");
+    }
+
+    #[test]
+    fn test_debug_multiple_elements() {
+        let mut vec = TruenoVec::new();
+        vec.push(1);
+        vec.push(2);
+        vec.push(3);
+        assert_eq!(format!("{vec:?}"), "[1, 2, 3]");
+    }
+
+    #[test]
+    fn test_debug_with_strings() {
+        let mut vec = TruenoVec::new();
+        vec.push(String::from("hello"));
+        vec.push(String::from("world"));
+        assert_eq!(format!("{vec:?}"), "[\"hello\", \"world\"]");
+    }
+
+    #[test]
+    fn test_debug_nested() {
+        let mut inner = TruenoVec::new();
+        inner.push(1);
+        inner.push(2);
+
+        let mut outer = TruenoVec::new();
+        outer.push(inner.clone());
+        outer.push(inner);
+
+        assert_eq!(format!("{outer:?}"), "[[1, 2], [1, 2]]");
     }
 }
 
