@@ -777,7 +777,10 @@ impl<T> IntoIterator for TruenoVec<T> {
     /// assert_eq!(sum, 6);
     /// ```
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter { vec: self, current: 0 }
+        IntoIter {
+            vec: self,
+            current: 0,
+        }
     }
 }
 

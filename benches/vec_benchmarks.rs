@@ -264,43 +264,51 @@ fn bench_insert(c: &mut Criterion) {
     for size in [10, 100, 1000] {
         group.throughput(Throughput::Elements(size as u64));
 
-        group.bench_with_input(BenchmarkId::new("TruenoVec_middle", size), &size, |b, &size| {
-            b.iter_batched(
-                || {
-                    let mut vec = TruenoVec::new();
-                    for i in 0..size {
-                        vec.push(i);
-                    }
-                    vec
-                },
-                |mut vec| {
-                    for _ in 0..size {
-                        vec.insert(size / 2, black_box(42));
-                    }
-                    vec
-                },
-                criterion::BatchSize::SmallInput,
-            );
-        });
+        group.bench_with_input(
+            BenchmarkId::new("TruenoVec_middle", size),
+            &size,
+            |b, &size| {
+                b.iter_batched(
+                    || {
+                        let mut vec = TruenoVec::new();
+                        for i in 0..size {
+                            vec.push(i);
+                        }
+                        vec
+                    },
+                    |mut vec| {
+                        for _ in 0..size {
+                            vec.insert(size / 2, black_box(42));
+                        }
+                        vec
+                    },
+                    criterion::BatchSize::SmallInput,
+                );
+            },
+        );
 
-        group.bench_with_input(BenchmarkId::new("std::Vec_middle", size), &size, |b, &size| {
-            b.iter_batched(
-                || {
-                    let mut vec = Vec::new();
-                    for i in 0..size {
-                        vec.push(i);
-                    }
-                    vec
-                },
-                |mut vec| {
-                    for _ in 0..size {
-                        vec.insert(size / 2, black_box(42));
-                    }
-                    vec
-                },
-                criterion::BatchSize::SmallInput,
-            );
-        });
+        group.bench_with_input(
+            BenchmarkId::new("std::Vec_middle", size),
+            &size,
+            |b, &size| {
+                b.iter_batched(
+                    || {
+                        let mut vec = Vec::new();
+                        for i in 0..size {
+                            vec.push(i);
+                        }
+                        vec
+                    },
+                    |mut vec| {
+                        for _ in 0..size {
+                            vec.insert(size / 2, black_box(42));
+                        }
+                        vec
+                    },
+                    criterion::BatchSize::SmallInput,
+                );
+            },
+        );
     }
 
     group.finish();
@@ -312,43 +320,51 @@ fn bench_remove(c: &mut Criterion) {
     for size in [10, 100, 1000] {
         group.throughput(Throughput::Elements(size as u64));
 
-        group.bench_with_input(BenchmarkId::new("TruenoVec_middle", size), &size, |b, &size| {
-            b.iter_batched(
-                || {
-                    let mut vec = TruenoVec::new();
-                    for i in 0..size * 2 {
-                        vec.push(i);
-                    }
-                    vec
-                },
-                |mut vec| {
-                    for _ in 0..size {
-                        vec.remove(vec.len() / 2);
-                    }
-                    vec
-                },
-                criterion::BatchSize::SmallInput,
-            );
-        });
+        group.bench_with_input(
+            BenchmarkId::new("TruenoVec_middle", size),
+            &size,
+            |b, &size| {
+                b.iter_batched(
+                    || {
+                        let mut vec = TruenoVec::new();
+                        for i in 0..size * 2 {
+                            vec.push(i);
+                        }
+                        vec
+                    },
+                    |mut vec| {
+                        for _ in 0..size {
+                            vec.remove(vec.len() / 2);
+                        }
+                        vec
+                    },
+                    criterion::BatchSize::SmallInput,
+                );
+            },
+        );
 
-        group.bench_with_input(BenchmarkId::new("std::Vec_middle", size), &size, |b, &size| {
-            b.iter_batched(
-                || {
-                    let mut vec = Vec::new();
-                    for i in 0..size * 2 {
-                        vec.push(i);
-                    }
-                    vec
-                },
-                |mut vec| {
-                    for _ in 0..size {
-                        vec.remove(vec.len() / 2);
-                    }
-                    vec
-                },
-                criterion::BatchSize::SmallInput,
-            );
-        });
+        group.bench_with_input(
+            BenchmarkId::new("std::Vec_middle", size),
+            &size,
+            |b, &size| {
+                b.iter_batched(
+                    || {
+                        let mut vec = Vec::new();
+                        for i in 0..size * 2 {
+                            vec.push(i);
+                        }
+                        vec
+                    },
+                    |mut vec| {
+                        for _ in 0..size {
+                            vec.remove(vec.len() / 2);
+                        }
+                        vec
+                    },
+                    criterion::BatchSize::SmallInput,
+                );
+            },
+        );
     }
 
     group.finish();
