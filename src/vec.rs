@@ -2267,12 +2267,16 @@ mod tests {
     // ========================================================================
 
     #[test]
+    #[allow(clippy::redundant_clone)]
     fn test_clone_empty() {
         let vec: TruenoVec<i32> = TruenoVec::new();
         let cloned = vec.clone();
 
-        assert_eq!(vec.len(), cloned.len());
+        // Both should be empty
+        assert_eq!(vec.len(), 0);
+        assert_eq!(cloned.len(), 0);
         assert_eq!(vec.capacity(), cloned.capacity());
+        assert!(vec.is_empty());
         assert!(cloned.is_empty());
     }
 

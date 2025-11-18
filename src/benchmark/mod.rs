@@ -1,7 +1,11 @@
-/// Scientific benchmarking infrastructure for certeza
-///
-/// This module provides data structures and utilities for reproducible
-/// performance measurement following the scientific reporting specification.
+//! Scientific benchmarking infrastructure for certeza
+//!
+//! This module provides data structures and utilities for reproducible
+//! performance measurement following the scientific reporting specification.
+//!
+//! # Examples
+//!
+//! See the `metadata` module for metadata collection functions.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -75,7 +79,7 @@ pub struct CpuInfo {
     /// Number of logical threads
     pub threads: usize,
 
-    /// Base frequency in MHz
+    /// Base frequency in `MHz`
     pub frequency_mhz: u64,
 
     /// L1 cache size
@@ -98,14 +102,14 @@ pub struct MemoryInfo {
     #[serde(rename = "type")]
     pub memory_type: String,
 
-    /// Memory frequency in MHz
+    /// Memory frequency in `MHz`
     pub frequency_mhz: Option<u64>,
 }
 
 /// Storage details
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageInfo {
-    /// Storage type (SSD, NVMe, HDD)
+    /// Storage type (SSD, `NVMe`, HDD)
     #[serde(rename = "type")]
     pub storage_type: String,
 
@@ -216,7 +220,7 @@ pub struct Statistics {
     /// Maximum value (ms)
     pub max_ms: f64,
 
-    /// Coefficient of variation (std_dev / mean)
+    /// Coefficient of variation (`std_dev` / mean)
     pub coefficient_of_variation: f64,
 
     /// 95% confidence interval [lower, upper]
@@ -291,7 +295,8 @@ pub struct BenchmarkSummary {
 
 impl BenchmarkReport {
     /// Create a new benchmark report with default values
-    pub fn new(_suite_name: String, metadata: BenchmarkMetadata) -> Self {
+    #[must_use]
+    pub fn new(_suite_name: &str, metadata: BenchmarkMetadata) -> Self {
         Self {
             schema_version: "1.0".to_string(),
             metadata,
@@ -339,29 +344,43 @@ impl BenchmarkReport {
     }
 
     /// Serialize to JSON string
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if serialization fails
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(self)
     }
 
     /// Serialize to JSON file
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if file creation or writing fails
     pub fn to_json_file(&self, path: &std::path::Path) -> std::io::Result<()> {
-        let json = self.to_json().map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, e)
-        })?;
+        let json = self
+            .to_json()
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
         std::fs::write(path, json)
     }
 
     /// Deserialize from JSON string
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deserialization fails or JSON is invalid
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(json)
     }
 
     /// Deserialize from JSON file
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if file reading fails or JSON is invalid
     pub fn from_json_file(path: &std::path::Path) -> std::io::Result<Self> {
         let json = std::fs::read_to_string(path)?;
-        Self::from_json(&json).map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::InvalidData, e)
-        })
+        Self::from_json(&json).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 }
 
@@ -409,15 +428,14 @@ mod tests {
             },
         };
 
-        let report = BenchmarkReport::new("test-suite".to_string(), metadata);
+        let report = BenchmarkReport::new("test-suite", metadata);
 
         // Test JSON serialization
         let json = report.to_json().expect("Failed to serialize");
         assert!(json.contains("\"schema_version\": \"1.0\""));
 
         // Test round-trip
-        let deserialized = BenchmarkReport::from_json(&json)
-            .expect("Failed to deserialize");
+        let deserialized = BenchmarkReport::from_json(&json).expect("Failed to deserialize");
         assert_eq!(deserialized.schema_version, "1.0");
         assert_eq!(deserialized.metadata.benchmark_suite, "test-suite");
     }
