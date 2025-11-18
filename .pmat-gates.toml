@@ -65,6 +65,30 @@ forbid_unsafe = true
 check_unused_dependencies = true
 check_outdated_dependencies = true
 
+[benchmarks]
+# Performance benchmarking quality gates (Phase 3.4)
+run_benchmarks = false  # Set to true to run on every commit (expensive)
+run_benchmarks_on_pr = true  # Run on pull requests
+run_benchmarks_on_main = true  # Run on main branch pushes
+
+# Regression thresholds
+regression_warning_threshold = 0.05  # 5% slowdown triggers warning
+regression_critical_threshold = 0.10  # 10% slowdown fails build
+regression_significance_level = 0.05  # p-value threshold
+regression_min_effect_size = 0.2  # Cohen's d minimum
+
+# Benchmark requirements
+min_iterations = 10  # Minimum measurement iterations
+min_warmup = 3  # Minimum warmup iterations
+require_baseline = true  # Require baseline for comparison
+fail_on_critical_regression = true  # Fail build on critical regression
+warn_on_regression = true  # Warn on any significant regression
+
+# Reporting
+generate_reports = true  # Generate markdown/CSV reports
+comment_on_pr = true  # Comment benchmark results on PRs
+upload_artifacts = true  # Upload results as CI artifacts
+
 [ci]
 # CI/CD specific settings
 fail_fast = false
