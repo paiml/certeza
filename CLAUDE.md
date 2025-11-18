@@ -326,27 +326,40 @@ Benchmarks align with the three-tier testing framework:
 
 ### Makefile Targets (Benchmarking)
 
+**Quick Commands:**
 ```bash
-# Tier 2: Quick regression check
-make benchmark-quick
+# Run critical benchmarks (Tier 2: ~5 min)
+make benchmark
 
-# Tier 3: Comprehensive suite
-make benchmark-comprehensive
+# Run comprehensive suite (Tier 3: ~30 min)
+make benchmark-all
 
-# Report generation (multiple formats)
-make benchmark-report-json
-make benchmark-report-csv
-make benchmark-report-markdown
-make benchmark-report-html
+# Generate all report formats (JSON, CSV, Markdown, HTML)
+make benchmark-report
 
-# Regression analysis
+# Compare against baseline (regression detection)
 make benchmark-compare
 
-# Update baseline (after verification)
-make benchmark-update-baseline
+# Save current as new baseline
+make benchmark-baseline-save
 
-# Reproducibility validation
-make benchmark-validate-reproduction
+# Clean benchmark artifacts
+make benchmark-clean
+```
+
+**Full Workflow Example:**
+```bash
+# 1. Run benchmarks
+make benchmark-all
+
+# 2. Generate reports
+make benchmark-report
+
+# 3. Compare against baseline
+make benchmark-compare
+
+# 4. If no regressions, update baseline
+make benchmark-baseline-save --name=v0.2.0
 ```
 
 ### Expected Benchmark Commands
@@ -540,6 +553,200 @@ certeza-benchmark-artifact-v1.0.0.tar.gz
 - scipy/numpy: Python statistical analysis libraries
 - Chart.js: Interactive web-based visualizations
 
+## Benchmarking Best Practices
+
+### Development Workflow
+
+**When to Benchmark:**
+- Before/after performance optimizations
+- Before major releases
+- When investigating performance regressions
+- During code reviews for performance-critical PRs
+
+**Local Benchmarking:**
+```bash
+# Quick sanity check (Tier 2)
+make benchmark
+
+# Before committing optimization
+make benchmark-compare
+
+# Full validation before PR
+make benchmark-all && make benchmark-report
+```
+
+**Interpreting Results:**
+- **CV < 5%**: Excellent stability, trust the measurements
+- **CV 5-10%**: Acceptable, but investigate outliers
+- **CV > 10%**: Unstable, check system load, thermal throttling
+
+### CI/CD Integration
+
+The project includes automated benchmarking workflows:
+
+**On Pull Request** (`.github/workflows/benchmarks.yml`):
+- Runs critical benchmarks automatically
+- Comments regression results on PR
+- Fails build if >10% slowdown detected
+- Statistical significance required (p < 0.05, Cohen's d ≥ 0.2)
+
+**On Merge to Main**:
+- Updates baseline automatically
+- Generates comprehensive reports
+- Publishes to benchmarks/baselines/main.json
+
+**Weekly Scheduled**:
+- Tracks long-term performance trends
+- Saves snapshots to benchmarks/history/
+
+### Reproducibility
+
+**For Exact Reproduction:**
+```bash
+# Use Docker for hermetic builds
+docker build -t certeza:reproducible .
+docker run --rm -v $(pwd)/benchmarks:/app/benchmarks certeza:reproducible
+
+# Validate statistical equivalence
+./scripts/validate_reproduction.sh baseline.json reproduced.json
+```
+
+**Metadata Requirements:**
+All benchmark results include complete environmental metadata:
+- Hardware: CPU model, cores, frequency, memory
+- Software: OS, kernel, rustc, cargo, LLVM versions
+- Configuration: CPU governor, turbo boost, swap status
+- Git: commit hash, branch name
+
+### Report Formats
+
+The framework generates 5 output formats from each benchmark run:
+
+1. **JSON** (`benchmarks/results/latest.json`):
+   - Machine-readable, complete structured data
+   - Schema version 1.0
+   - Use for programmatic analysis and archival
+
+2. **CSV** (`benchmarks/results/report.csv`):
+   - Spreadsheet-compatible tabular data
+   - Import to R, Python pandas, Excel
+   - Single-file or multi-file modes
+
+3. **Markdown** (`benchmarks/results/report.md`):
+   - GitHub-flavored markdown
+   - Human-readable, suitable for documentation
+   - Includes statistical methodology
+
+4. **HTML** (`benchmarks/results/dashboard.html`):
+   - Interactive Chart.js visualizations
+   - Self-contained, open in browser
+   - Performance trends and distributions
+
+5. **LaTeX** (future):
+   - Publication-quality tables
+   - IEEE/ACM paper formatting
+
+**Generating Reports:**
+```bash
+# All formats at once
+make benchmark-report
+
+# Individual formats
+deno run --allow-read --allow-write scripts/generate_csv_report.ts input.json output.csv
+deno run --allow-read --allow-write scripts/generate_markdown_report.ts input.json report.md
+deno run --allow-read --allow-write scripts/generate_dashboard.ts input.json dashboard.html
+```
+
+### Baseline Management
+
+**Save Baseline:**
+```bash
+# Via Makefile
+make benchmark-baseline-save --name=v1.0.0
+
+# Via script
+deno run --allow-read --allow-write scripts/baseline_manager.ts save \
+    --input benchmarks/results/latest.json \
+    --name v1.0.0 \
+    --description "Release 1.0.0 baseline"
+```
+
+**List Baselines:**
+```bash
+deno run --allow-read scripts/baseline_manager.ts list
+```
+
+**Compare Against Baseline:**
+```bash
+# Detect regressions
+deno run --allow-read --allow-write scripts/check_regression.ts \
+    --baseline benchmarks/baselines/v1.0.0.json \
+    --current benchmarks/results/latest.json \
+    --max-regression 10.0
+
+# Exit codes:
+# 0 = No regressions
+# 1 = Warning (5-10% slower)
+# 2 = Critical (>10% slower)
+# 3 = Error
+```
+
+### Troubleshooting Performance Variance
+
+**High Coefficient of Variation (CV > 10%)**:
+
+1. **Check CPU Governor:**
+   ```bash
+   # Linux
+   cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+   sudo cpupower frequency-set --governor performance
+   ```
+
+2. **Disable Turbo Boost** (for consistency):
+   ```bash
+   # Intel
+   echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
+
+   # AMD
+   echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost
+   ```
+
+3. **Close Background Processes:**
+   ```bash
+   # Check system load
+   top
+   htop
+
+   # Stop unnecessary services
+   systemctl stop <service-name>
+   ```
+
+4. **Increase Iterations:**
+   ```bash
+   # More iterations reduce variance
+   ./scripts/run_benchmarks.sh --warmup 10 --iterations 50
+   ```
+
+### Archival and Publication
+
+**Zenodo Integration:**
+
+The project includes `.zenodo.json` for DOI assignment:
+
+```bash
+# Prepare archive
+git archive --format=tar.gz HEAD > certeza-v0.1.0.tar.gz
+
+# Include benchmark artifacts
+tar -czf certeza-benchmarks-v0.1.0.tar.gz benchmarks/
+
+# Upload to Zenodo (manual or via API)
+# Zenodo will assign DOI for permanent citation
+```
+
+**Citation:**
+See `.zenodo.json` for complete metadata. Generated DOI enables academic citation.
+
 ## Development Anti-Patterns
 
 Based on the specification's emphasis on sustainable practices:
@@ -548,6 +755,9 @@ Based on the specification's emphasis on sustainable practices:
 2. **Never** chase metrics without understanding (Goodhart's Law warning)
 3. **Never** apply full verification framework to low-risk code (over-processing waste)
 4. **Never** ignore cognitive load limits (use batching, time-boxing, pairing for mutation analysis)
+5. **Never** benchmark debug builds (always use `--release`)
+6. **Never** trust single-measurement anecdotes (use statistical sampling with n ≥ 10)
+7. **Never** compare benchmarks across different hardware without normalization
 
 ## Quality Standards
 
