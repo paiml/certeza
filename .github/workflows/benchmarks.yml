@@ -1,0 +1,368 @@
+name: Benchmark Suite
+
+# Run benchmarks on:
+# - Push to main (update baseline)
+# - Pull requests (regression check)
+# - Weekly schedule (performance tracking)
+# - Manual trigger
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Run every Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+    inputs:
+      benchmark_set:
+        description: 'Benchmark set to run'
+        required: false
+        default: 'critical'
+        type: choice
+        options:
+          - critical
+          - all
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Job 1: Run benchmarks
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for git metadata
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.82.0
+          components: rustfmt, clippy
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Install hyperfine (fallback benchmark tool)
+        run: |
+          wget https://github.com/sharkdp/hyperfine/releases/download/v1.18.0/hyperfine_1.18.0_amd64.deb
+          sudo dpkg -i hyperfine_1.18.0_amd64.deb
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "benchmark-cache"
+
+      - name: Build release binaries
+        run: cargo build --release --locked
+
+      - name: Generate reproducibility manifest
+        run: |
+          ./scripts/generate_reproducibility_manifest.sh benchmarks/metadata/toolchain_manifest.txt
+
+      - name: Determine benchmark set
+        id: bench_set
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "BENCH_SET=${{ github.event.inputs.benchmark_set }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "schedule" ]; then
+            echo "BENCH_SET=all" >> $GITHUB_OUTPUT
+          else
+            echo "BENCH_SET=critical" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run benchmarks
+        run: |
+          ./scripts/run_benchmarks.sh \
+            --benchmarks ${{ steps.bench_set.outputs.BENCH_SET }} \
+            --output benchmarks/results/current.json \
+            --warmup 3 \
+            --iterations 10
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmarks/results/current.json
+            benchmarks/metadata/toolchain_manifest.txt
+          retention-days: 30
+
+  # Job 2: Check for regressions (PR only)
+  regression-check:
+    name: Regression Detection
+    needs: benchmark
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Download current results
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmarks/results/
+
+      - name: Download baseline from main branch
+        run: |
+          # Try to download baseline from main branch
+          git fetch origin main
+          git checkout origin/main -- benchmarks/baselines/main.json || echo "No baseline found, will skip regression check"
+
+      - name: Check for regressions
+        id: regression
+        continue-on-error: true
+        run: |
+          if [ -f "benchmarks/baselines/main.json" ]; then
+            deno run --allow-read --allow-write \
+              scripts/check_regression.ts \
+              --baseline benchmarks/baselines/main.json \
+              --current benchmarks/results/current.json \
+              --output-json benchmarks/results/regression_report.json \
+              | tee regression_output.txt
+
+            echo "EXIT_CODE=$?" >> $GITHUB_OUTPUT
+          else
+            echo "No baseline found - skipping regression check"
+            echo "EXIT_CODE=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate comparison report
+        if: always()
+        run: |
+          if [ -f "benchmarks/baselines/main.json" ]; then
+            deno run --allow-read --allow-write \
+              scripts/baseline_manager.ts compare \
+              --baseline main \
+              --current benchmarks/results/current.json \
+              --format markdown \
+              --output benchmarks/results/comparison.md
+          else
+            echo "# Benchmark Results" > benchmarks/results/comparison.md
+            echo "" >> benchmarks/results/comparison.md
+            echo "No baseline available for comparison." >> benchmarks/results/comparison.md
+            echo "This appears to be the first benchmark run." >> benchmarks/results/comparison.md
+          fi
+
+      - name: Comment PR with results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '';
+
+            if (fs.existsSync('benchmarks/results/comparison.md')) {
+              body = fs.readFileSync('benchmarks/results/comparison.md', 'utf8');
+            } else {
+              body = '## Benchmark Results\n\nBenchmark execution failed. Check workflow logs.';
+            }
+
+            // Add regression status
+            const exitCode = '${{ steps.regression.outputs.EXIT_CODE }}';
+            if (exitCode === '2') {
+              body = '🔴 **CRITICAL REGRESSIONS DETECTED**\n\n' + body;
+            } else if (exitCode === '1') {
+              body = '⚠️ **Performance warnings detected**\n\n' + body;
+            } else if (exitCode === '0') {
+              body = '✅ **No performance regressions detected**\n\n' + body;
+            }
+
+            // Find existing comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.data.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Benchmark Results')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+      - name: Fail if critical regressions
+        if: steps.regression.outputs.EXIT_CODE == '2'
+        run: |
+          echo "Critical performance regressions detected!"
+          exit 1
+
+  # Job 3: Generate reports (main branch and schedule only)
+  generate-reports:
+    name: Generate Reports
+    needs: benchmark
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Download benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmarks/results/
+
+      - name: Generate markdown report
+        run: |
+          deno run --allow-read --allow-write \
+            scripts/generate_markdown_report.ts \
+            benchmarks/results/current.json \
+            benchmarks/results/report.md
+
+      - name: Generate CSV reports
+        run: |
+          deno run --allow-read --allow-write \
+            scripts/generate_csv_report.ts \
+            benchmarks/results/current.json \
+            benchmarks/results/csv/ \
+            --multi
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-reports
+          path: |
+            benchmarks/results/report.md
+            benchmarks/results/csv/
+          retention-days: 90
+
+  # Job 4: Update baseline (main branch only)
+  update-baseline:
+    name: Update Baseline
+    needs: benchmark
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Download benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmarks/results/
+
+      - name: Update main baseline
+        run: |
+          mkdir -p benchmarks/baselines
+
+          deno run --allow-read --allow-write \
+            scripts/baseline_manager.ts save \
+            --input benchmarks/results/current.json \
+            --name main \
+            --description "Main branch baseline (auto-updated)" || true
+
+          # Copy to main.json directly
+          cp benchmarks/results/current.json benchmarks/baselines/main.json
+
+      - name: Commit baseline update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add benchmarks/baselines/main.json
+          git add benchmarks/baselines/index.json || true
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update benchmark baseline [skip ci]"
+            git push
+          fi
+
+  # Job 5: Performance tracking (scheduled runs)
+  performance-tracking:
+    name: Track Performance Over Time
+    needs: [benchmark, generate-reports]
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Download benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmarks/results/
+
+      - name: Download reports
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-reports
+          path: benchmarks/results/
+
+      - name: Save weekly snapshot
+        run: |
+          WEEK=$(date +%Y-W%V)
+          mkdir -p benchmarks/history/$WEEK
+
+          cp benchmarks/results/current.json benchmarks/history/$WEEK/results.json
+          cp benchmarks/results/report.md benchmarks/history/$WEEK/report.md
+
+          deno run --allow-read --allow-write \
+            scripts/baseline_manager.ts save \
+            --input benchmarks/results/current.json \
+            --name "weekly-$WEEK" \
+            --description "Weekly snapshot $WEEK"
+
+      - name: Generate performance trend analysis
+        run: |
+          # TODO: Implement trend analysis script
+          echo "Performance tracking snapshot saved for week $(date +%Y-W%V)"

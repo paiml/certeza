@@ -515,7 +515,7 @@ impl<T> TruenoVec<T> {
     /// assert_eq!(vec.get(1), Some(&10));
     /// ```
     #[must_use]
-    pub const fn as_slice_mut(&mut self) -> &mut [T] {
+    pub fn as_slice_mut(&mut self) -> &mut [T] {
         // SAFETY: ptr points to len initialized elements
         unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
     }
@@ -964,7 +964,7 @@ impl<T> TruenoVec<T> {
     /// assert_eq!(vec.get(2), Some(&6));
     /// ```
     #[must_use]
-    pub const fn iter_mut(&mut self) -> IterMut<'_, T> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         // SAFETY: ptr and ptr+len are both valid
         unsafe {
             IterMut {

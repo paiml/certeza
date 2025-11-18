@@ -410,6 +410,101 @@ mutation-clean: ## Clean mutation testing artifacts
 	@echo "✓ Mutation testing artifacts cleaned"
 
 # ============================================================================
+# Benchmarking (Phase 3: Scientific Reporting & Performance Tracking)
+# ============================================================================
+.PHONY: benchmark benchmark-critical benchmark-all benchmark-report benchmark-compare benchmark-baseline-save benchmark-clean
+
+benchmark: benchmark-critical ## Run critical benchmarks (default)
+
+benchmark-critical: ## Run critical performance benchmarks
+	@echo "📊 Running critical benchmarks..."
+	@./scripts/run_benchmarks.sh \
+		--benchmarks critical \
+		--output benchmarks/results/latest.json \
+		--warmup 3 \
+		--iterations 10
+	@echo "✅ Critical benchmarks complete"
+
+benchmark-all: ## Run comprehensive benchmark suite
+	@echo "📊 Running comprehensive benchmark suite..."
+	@./scripts/run_benchmarks.sh \
+		--benchmarks all \
+		--profiles all \
+		--output benchmarks/results/latest.json \
+		--warmup 5 \
+		--iterations 20
+	@echo "✅ Comprehensive benchmarks complete"
+
+benchmark-report: ## Generate benchmark reports (MD + CSV)
+	@echo "📄 Generating benchmark reports..."
+	@if ! command -v deno >/dev/null 2>&1; then \
+		echo "❌ Deno not found. Install from https://deno.land/"; \
+		exit 1; \
+	fi
+	@if [ ! -f benchmarks/results/latest.json ]; then \
+		echo "❌ No benchmark results found. Run 'make benchmark' first."; \
+		exit 1; \
+	fi
+	@deno run --allow-read --allow-write \
+		scripts/generate_markdown_report.ts \
+		benchmarks/results/latest.json \
+		benchmarks/results/report.md
+	@deno run --allow-read --allow-write \
+		scripts/generate_csv_report.ts \
+		benchmarks/results/latest.json \
+		benchmarks/results/csv/ \
+		--multi
+	@echo "✅ Reports generated:"
+	@echo "  - Markdown: benchmarks/results/report.md"
+	@echo "  - CSV: benchmarks/results/csv/"
+
+benchmark-compare: ## Compare against baseline and check for regressions
+	@echo "🔍 Checking for performance regressions..."
+	@if ! command -v deno >/dev/null 2>&1; then \
+		echo "❌ Deno not found. Install from https://deno.land/"; \
+		exit 1; \
+	fi
+	@if [ ! -f benchmarks/baselines/main.json ]; then \
+		echo "⚠️  No baseline found. Saving current results as baseline..."; \
+		$(MAKE) benchmark-baseline-save; \
+		exit 0; \
+	fi
+	@deno run --allow-read --allow-write \
+		scripts/check_regression.ts \
+		--baseline benchmarks/baselines/main.json \
+		--current benchmarks/results/latest.json \
+		--output-json benchmarks/results/regression_report.json
+	@echo ""
+	@deno run --allow-read --allow-write \
+		scripts/baseline_manager.ts compare \
+		--baseline main \
+		--current benchmarks/results/latest.json \
+		--format markdown \
+		--output benchmarks/results/comparison.md
+	@echo "✅ Comparison complete: benchmarks/results/comparison.md"
+
+benchmark-baseline-save: ## Save current results as baseline
+	@echo "💾 Saving benchmark baseline..."
+	@if ! command -v deno >/dev/null 2>&1; then \
+		echo "❌ Deno not found. Install from https://deno.land/"; \
+		exit 1; \
+	fi
+	@if [ ! -f benchmarks/results/latest.json ]; then \
+		echo "❌ No benchmark results found. Run 'make benchmark' first."; \
+		exit 1; \
+	fi
+	@deno run --allow-read --allow-write \
+		scripts/baseline_manager.ts save \
+		--input benchmarks/results/latest.json \
+		--name main \
+		--description "Main branch baseline (updated: $$(date +%Y-%m-%d))"
+	@echo "✅ Baseline saved: benchmarks/baselines/main.json"
+
+benchmark-clean: ## Clean benchmark artifacts
+	@rm -rf benchmarks/results/*.json benchmarks/results/*.md benchmarks/results/csv/
+	@echo "✓ Benchmark artifacts cleaned"
+
+# ============================================================================
 # Dependency management
 # ============================================================================
 update-deps: ## Update dependencies (semver-compatible)
@@ -564,6 +659,14 @@ help: ## Show this help
 	@echo "  make mutation     - Run full mutation testing (>85% target)"
 	@echo "  make mutation-report - Analyze mutation test results"
 	@echo "  make mutation-clean - Clean mutation artifacts"
+	@echo ""
+	@echo "Benchmarking:"
+	@echo "  make benchmark    - Run critical performance benchmarks"
+	@echo "  make benchmark-all - Run comprehensive benchmark suite"
+	@echo "  make benchmark-report - Generate markdown/CSV reports"
+	@echo "  make benchmark-compare - Compare against baseline (regression check)"
+	@echo "  make benchmark-baseline-save - Save current as baseline"
+	@echo "  make benchmark-clean - Clean benchmark artifacts"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  make format       - Format code"
