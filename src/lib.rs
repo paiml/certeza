@@ -56,11 +56,11 @@
 #![warn(clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
 
-pub mod vec;
 pub mod benchmark;
+pub mod vec;
 
-pub use vec::{IntoIter, Iter, IterMut, TruenoVec};
 pub use benchmark::*;
+pub use vec::{IntoIter, Iter, IterMut, TruenoVec};
 
 /// Adds two numbers together.
 ///
