@@ -57,8 +57,10 @@
 #![allow(clippy::module_name_repetitions)]
 
 pub mod vec;
+pub mod benchmark;
 
 pub use vec::{IntoIter, Iter, IterMut, TruenoVec};
+pub use benchmark::*;
 
 /// Adds two numbers together.
 ///
