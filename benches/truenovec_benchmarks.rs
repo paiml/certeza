@@ -162,7 +162,11 @@ fn main() {
 
 #[cfg(test)]
 mod bench_tests {
-    use super::*;
+    #[allow(unused_imports)]
+    use super::{
+        bench_comparison, bench_get, bench_growth_pattern, bench_pop, bench_push_preallocated,
+        bench_push_sequential,
+    };
 
     #[test]
     fn test_push_sequential_small() {
