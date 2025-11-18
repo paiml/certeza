@@ -27,6 +27,10 @@ criterion = { version = "0.5", features = ["html_reports"] }
 name = "vec_benchmarks"
 harness = false
 
+[[bench]]
+name = "truenovec_benchmarks"
+harness = false
+
 # Test coverage tools
 # Note: cargo-tarpaulin and cargo-llvm-cov are installed as cargo subcommands
 

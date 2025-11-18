@@ -1510,7 +1510,7 @@ impl<T: std::fmt::Display> std::fmt::Display for TruenoVec<T> {
     }
 }
 
-/// Borrow<[T]> trait for advanced borrowing patterns
+/// `Borrow<[T]>` trait for advanced borrowing patterns
 ///
 /// Enables using `TruenoVec` with APIs that accept `Borrow<[T]>` bounds,
 /// particularly useful for `HashMap` and `BTreeMap` lookups.
