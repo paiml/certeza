@@ -1,0 +1,10 @@
+[
+  {
+    "name": "test-baseline-v1",
+    "created": "2025-11-18T11:07:45.745Z",
+    "git_commit": "abc123def",
+    "git_branch": "main",
+    "total_benchmarks": 3,
+    "description": "Test baseline for validation"
+  }
+]
