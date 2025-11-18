@@ -1,0 +1,50 @@
+# Mutation Testing Configuration for certeza
+# Phase 4: Advanced Testing Techniques
+#
+# This configuration controls cargo-mutants behavior for systematic
+# mutation testing aligned with the certeza tiered testing framework.
+
+# Minimum supported Rust version
+minimum_test_timeout = 60
+
+# Exclude specific patterns from mutation
+exclude_globs = [
+    "benches/**",
+    "tests/**",
+    "examples/**",
+]
+
+# Exclude specific functions from mutation testing
+# Use this sparingly - only for generated code or trivial functions
+exclude_functions = [
+    # Derived trait implementations (auto-generated)
+    "*::clone",
+    "*::default",
+
+    # Simple getters (trivial, well-tested by integration)
+    "TruenoVec::len",
+    "TruenoVec::is_empty",
+    "TruenoVec::capacity",
+]
+
+# Test timeout multiplier
+# Mutation tests may be slower than normal tests
+timeout_multiplier = 2.0
+
+# Show detailed output for failures
+show_times = true
+show_diffs = true
+
+# Integration with certeza tiered testing:
+# - Tier 1 (ON-SAVE): Not applicable (mutation testing is Tier 3)
+# - Tier 2 (ON-COMMIT): Quick mutation check with --file flag
+# - Tier 3 (ON-MERGE): Full mutation testing suite
+
+# Target mutation score: >85% (aligned with PMAT requirements)
+# This means at least 85% of mutants should be caught by tests
+
+# Mutation testing philosophy (from specification):
+# - Focus on algorithmic correctness, not coverage metrics
+# - Use mutant analysis as a learning tool
+# - Identify gaps in property-based tests
+# - Avoid chasing equivalent mutants (acknowledge undecidability)
