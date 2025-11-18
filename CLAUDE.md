@@ -284,6 +284,261 @@ The specification acknowledges fundamental limits:
 
 - `docs/specifications/theoretical-max-testing-spec.md` - Main framework specification (v1.1, ~14K words)
 - `docs/specifications/IMPROVEMENTS_v1.1.md` - Changelog showing philosophy shift from "theoretical maximum" to "asymptotic effectiveness"
+- `docs/specifications/scientific-reporting-benchmarking-spec.md` - Scientific benchmarking framework (v1.0, ~12.5K words)
+- `ROADMAP.md` - Project roadmap and implementation phases
+
+## Scientific Benchmarking Framework
+
+**Status**: Phase 3 implementation in progress (see ROADMAP.md)
+
+This project includes a comprehensive scientific benchmarking framework for reproducible performance measurement and reporting. The framework emphasizes statistical rigor, multi-format reporting, and integration with the tiered testing philosophy.
+
+### Benchmarking Philosophy
+
+Performance is a quality attribute that requires the same rigor as functional correctness. Performance regressions are bugs. Scientific benchmarking provides the evidence to prevent, detect, and fix them systematically.
+
+**Key Principles**:
+1. **Reproducibility First**: Complete environmental metadata and toolchain pinning
+2. **Statistical Rigor**: Confidence intervals, significance testing, effect sizes
+3. **Transparency**: Full disclosure of methodology and negative results
+4. **Fitness for Purpose**: Multiple report formats for different audiences
+5. **Integration with Quality Gates**: Performance gates in CI/CD pipelines
+
+### Tiered Benchmarking
+
+Benchmarks align with the three-tier testing framework:
+
+**Tier 1: ON-SAVE**
+- Not applicable (benchmarks require release builds)
+- Alternative: Smoke tests verify benchmark binaries compile
+
+**Tier 2: ON-COMMIT (1-5 Minutes)**
+- Quick regression check with critical benchmarks only
+- Threshold gates: Fail commit if >10% slower than baseline
+- Integration: Pre-commit hook via PMAT
+- Tools: bashrs with 3 warmup + 10 measured iterations
+
+**Tier 3: ON-MERGE/NIGHTLY (Hours)**
+- Comprehensive benchmark suite across all optimization profiles
+- Statistical analysis and full reporting pipeline
+- Integration: GitHub Actions CI/CD workflow
+- Tools: bashrs with 5 warmup + 20 measured iterations
+
+### Makefile Targets (Benchmarking)
+
+```bash
+# Tier 2: Quick regression check
+make benchmark-quick
+
+# Tier 3: Comprehensive suite
+make benchmark-comprehensive
+
+# Report generation (multiple formats)
+make benchmark-report-json
+make benchmark-report-csv
+make benchmark-report-markdown
+make benchmark-report-html
+
+# Regression analysis
+make benchmark-compare
+
+# Update baseline (after verification)
+make benchmark-update-baseline
+
+# Reproducibility validation
+make benchmark-validate-reproduction
+```
+
+### Expected Benchmark Commands
+
+```bash
+# Run critical benchmarks (Tier 2)
+./scripts/run_benchmarks.sh \
+    --benchmarks critical \
+    --output benchmarks/quick_results.json \
+    --warmup 3 \
+    --iterations 10
+
+# Run comprehensive suite (Tier 3)
+./scripts/run_benchmarks.sh \
+    --benchmarks all \
+    --profiles all \
+    --output benchmarks/comprehensive_results.json \
+    --warmup 5 \
+    --iterations 20
+
+# Compare against baseline
+python3 scripts/check_regression.py \
+    --baseline benchmarks/baseline.json \
+    --current benchmarks/latest.json \
+    --max-regression 10.0
+
+# Generate all report formats
+python3 scripts/generate_report.py \
+    --input benchmarks/comprehensive_results.json \
+    --format all \
+    --output benchmarks/reports/
+```
+
+### Report Formats
+
+The framework generates five output formats from a single measurement run:
+
+1. **JSON** (machine-readable): Complete structured data for archival and programmatic analysis
+2. **CSV** (spreadsheet-compatible): Tabular data for R, Python pandas, Excel
+3. **Markdown** (human-readable): GitHub documentation and technical blogs
+4. **LaTeX** (publication-quality): IEEE/ACM formatted tables for academic papers
+5. **HTML** (interactive dashboard): Chart.js visualizations with drill-down capabilities
+
+### Statistical Methodology
+
+**Measurement Protocol**:
+- Warmup phase (3-5 iterations) to eliminate cold-start effects
+- Measured iterations (10-20) with adaptive stopping based on CV
+- IQR-based outlier detection and removal
+- Normality testing (Shapiro-Wilk) to select appropriate statistics
+
+**Comparative Analysis**:
+- Welch's t-test (parametric) or Mann-Whitney U (non-parametric)
+- Effect size calculation (Cohen's d)
+- Bootstrap confidence intervals for speedup ratios
+- Significance threshold: α = 0.05
+
+**Quality Metrics**:
+- Coefficient of variation (CV) < 10% for reproducibility
+- Statistical power analysis for regression detection
+- Change-point detection for long-running time series
+
+### Reproducibility Mechanisms
+
+**Toolchain Pinning**:
+```toml
+# rust-toolchain.toml
+[toolchain]
+channel = "1.75.0"
+components = ["rustfmt", "clippy", "rust-src"]
+targets = ["x86_64-unknown-linux-gnu"]
+profile = "minimal"
+```
+
+**Dependency Locking**:
+- Exact version pinning in Cargo.toml (not semver ranges)
+- Cargo.lock committed to repository
+- SHA256 validation of source tree and dependencies
+
+**Containerized Builds**:
+- Multi-stage Dockerfile with pinned Rust toolchain
+- Hermetic build environment isolating from host system
+- Byte-identical build verification across environments
+
+**Metadata Capture**:
+- Complete hardware specifications (CPU, memory, storage)
+- Software environment (OS, kernel, Rust version, LLVM version)
+- Runtime configuration (CPU governor, turbo boost, isolated cores)
+
+### Performance Quality Gates
+
+**.pmat-gates.toml Configuration**:
+```toml
+[performance]
+enabled = true
+tier = "tier2"
+max_regression_percent = 10.0
+min_improvement_percent = 3.0
+baseline_file = "benchmarks/baseline.json"
+critical_benchmarks = [
+    "vector_push_capacity_growth",
+    "vector_iteration_sum",
+    "vector_binary_search"
+]
+```
+
+**Pre-Commit Hook Behavior**:
+- Runs critical benchmarks automatically on commit
+- Blocks commit if performance regression >10%
+- Provides actionable feedback: "Run `make benchmark-analyze` for details"
+
+**CI/CD Integration**:
+- PR benchmarks (Tier 2): Run on every pull request, comment results
+- Nightly benchmarks (Tier 3): Run comprehensive suite, publish reports
+- Artifact publishing: Upload to GitHub Pages and Zenodo
+
+### Benchmark Design Guidelines
+
+**Good Benchmarks**:
+- Measure single, well-defined operation
+- Stable runtime (CV < 10%)
+- Representative of real-world usage
+- Isolated from environmental noise
+
+**Benchmark Categories**:
+- **CPU-bound**: Fibonacci recursion, prime sieve, Ackermann function
+- **Memory-intensive**: Matrix multiplication, quicksort, large allocations
+- **I/O-bound**: File operations, network calls, serialization
+
+**Anti-Patterns**:
+- Benchmarking debug builds (use `--release` always)
+- Single-measurement anecdotes (use statistical sampling)
+- Ignoring warmup (JIT, cache population, OS resource allocation)
+- Comparing across different hardware without normalization
+
+### Optimization Profile Matrix
+
+Explore performance/size tradeoffs systematically:
+
+```toml
+# Cargo.toml profiles
+[profile.dev]
+opt-level = 0  # Fast compilation, slow runtime
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+
+[profile.release-size]
+opt-level = "z"  # Optimize for binary size
+lto = "fat"
+strip = true
+```
+
+**Pathfinder Algorithm**: Reduces combinatorial explosion of optimization flags from 800+ configurations to ~150 targeted experiments while maintaining 98.6% confidence in identifying optimal profiles.
+
+### Artifact Archival
+
+**Zenodo Integration**:
+- Publish complete benchmarking artifacts with DOI
+- Includes: source code, results, metadata, reproduction scripts
+- Enables long-term citation and independent replication
+
+**Archive Structure**:
+```
+certeza-benchmark-artifact-v1.0.0.tar.gz
+├── README.md                    # Reproduction instructions
+├── src/                         # Complete source code
+├── Cargo.toml & Cargo.lock     # Dependency specifications
+├── rust-toolchain.toml         # Toolchain pin
+├── benchmarks/
+│   ├── results.json            # Raw measurement data
+│   ├── results.csv             # Tabular export
+│   ├── report.md               # Human-readable report
+│   └── metadata/               # Hardware/software specs
+└── scripts/
+    ├── run_benchmarks.sh       # Execution protocol
+    └── validate_reproduction.sh # Verification script
+```
+
+### Reference Implementations
+
+**Methodology Sources**:
+- [compiled-rust-benchmarking](https://github.com/paiml/compiled-rust-benchmarking): Pathfinder optimization algorithm
+- [ruchy-docker](https://github.com/paiml/ruchy-docker): Containerized benchmarking with bashrs
+- [ruchy-lambda](https://github.com/paiml/ruchy-lambda): Serverless cold-start performance measurement
+
+**Statistical Tools**:
+- bashrs: Statistical command-line benchmarking tool
+- scipy/numpy: Python statistical analysis libraries
+- Chart.js: Interactive web-based visualizations
 
 ## Development Anti-Patterns
 
