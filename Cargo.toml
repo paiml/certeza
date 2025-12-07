@@ -11,6 +11,14 @@ categories = ["development-tools::testing", "development-tools::profiling"]
 readme = "README.md"
 documentation = "https://docs.rs/certeza"
 
+[features]
+# Chaos engineering features (renacer pattern from Sprint 29)
+default = []
+chaos-basic = []
+chaos-network = ["chaos-basic"]
+chaos-byzantine = ["chaos-basic"]
+chaos-full = ["chaos-network", "chaos-byzantine"]
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 

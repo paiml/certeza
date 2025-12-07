@@ -57,6 +57,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 pub mod benchmark;
+pub mod chaos;
 pub mod vec;
 
 pub use benchmark::*;

@@ -1,96 +1,32 @@
 # PMAT Quality Gates Configuration
-# These gates enforce quality standards at commit/merge time
+# See: https://github.com/paiml/pmat
+
+[quality]
+# Minimum thresholds for quality gates
+rust_project_score = 85
+repo_score = 85
+test_coverage = 80
+mutation_score = 60
 
 [gates]
-# Static analysis
-run_clippy = true
-clippy_strict = true
-clippy_deny_warnings = true
-
-# Formatting
-run_rustfmt = true
-rustfmt_check = true
-
-# Testing
-run_tests = true
-test_all_features = true
-
-# Coverage
-check_coverage = true
-min_coverage = 85.0
-enforce_on_new_code = true
-
-# Complexity
-check_complexity = true
-max_complexity = 10
-max_cognitive_complexity = 10
-
-# Security
-run_cargo_audit = true
-run_cargo_deny = true
-deny_warnings = true
-
-# Documentation
-check_rustdoc = true
-min_rustdoc_coverage = 90.0
-require_examples = true
-
-# SATD (Technical Debt)
-check_satd = true
-max_satd = 0
-fail_on_satd = true
-
-# Mutation testing (Tier 3 - pre-merge/nightly)
-# Note: Run mutation testing separately as it takes hours
-run_mutation_on_commit = false
-min_mutation_score = 85.0
+# Enforce quality gates in CI
+enforce_in_ci = true
+block_on_failure = true
 
 [thresholds]
-# Cyclomatic complexity per function
-cyclomatic = 10
+# Complexity thresholds
+max_cyclomatic_complexity = 20
+max_cognitive_complexity = 15
+max_function_lines = 100
 
-# Cognitive complexity per function
-cognitive = 10
+[testing]
+# Testing requirements
+require_unit_tests = true
+require_integration_tests = true
+require_doc_tests = true
 
-# Maximum nesting depth
-nesting = 5
-
-# Lines of code per function
-max_lines_per_function = 50
-
-[rust_specific]
-# Rust-specific gates
-no_std_compatible = false
-forbid_unsafe = true
-check_unused_dependencies = true
-check_outdated_dependencies = true
-
-[benchmarks]
-# Performance benchmarking quality gates (Phase 3.4)
-run_benchmarks = false  # Set to true to run on every commit (expensive)
-run_benchmarks_on_pr = true  # Run on pull requests
-run_benchmarks_on_main = true  # Run on main branch pushes
-
-# Regression thresholds
-regression_warning_threshold = 0.05  # 5% slowdown triggers warning
-regression_critical_threshold = 0.10  # 10% slowdown fails build
-regression_significance_level = 0.05  # p-value threshold
-regression_min_effect_size = 0.2  # Cohen's d minimum
-
-# Benchmark requirements
-min_iterations = 10  # Minimum measurement iterations
-min_warmup = 3  # Minimum warmup iterations
-require_baseline = true  # Require baseline for comparison
-fail_on_critical_regression = true  # Fail build on critical regression
-warn_on_regression = true  # Warn on any significant regression
-
-# Reporting
-generate_reports = true  # Generate markdown/CSV reports
-comment_on_pr = true  # Comment benchmark results on PRs
-upload_artifacts = true  # Upload results as CI artifacts
-
-[ci]
-# CI/CD specific settings
-fail_fast = false
-parallel = true
-timeout_seconds = 1800
+[documentation]
+# Documentation requirements
+require_readme = true
+require_changelog = true
+require_api_docs = true

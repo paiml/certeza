@@ -1,9 +1,23 @@
-# certeza
+<div align="center">
 
-[![CI](https://github.com/paiml/certeza/actions/workflows/ci.yml/badge.svg)](https://github.com/paiml/certeza/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<p align="center">
+  <img src=".github/certeza-hero.svg" alt="certeza" width="800">
+</p>
 
-**certeza** - A scientific experiment into realistic provability with Rust.
+<h1 align="center">certeza</h1>
+
+<p align="center">
+  <b>A scientific experiment into realistic provability with Rust</b>
+</p>
+
+<p align="center">
+  <a href="https://github.com/paiml/certeza/actions/workflows/ci.yml"><img src="https://github.com/paiml/certeza/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
+</p>
+
+</div>
+
+---
 
 ## Overview
 
@@ -271,6 +285,69 @@ Benchmarks demonstrate competitive performance with `std::Vec`:
 - **Growth pattern**: ~14 reallocations for 10,000 elements (log₂ n)
 - **Memory efficiency**: 24-byte overhead per vector
 
+## Chaos Engineering & Fuzz Testing
+
+**certeza** includes chaos engineering and fuzz testing capabilities adapted from [**renacer v0.4.1**](https://github.com/paiml/renacer) (Sprint 29).
+
+### Chaos Engineering
+
+Test system resilience under adverse conditions:
+
+```rust
+use certeza::chaos::{ChaosConfig, ChaosResult};
+use std::time::Duration;
+
+// Gentle preset for development (512MB, 80% CPU, 120s timeout)
+let gentle = ChaosConfig::gentle();
+
+// Aggressive preset for CI/CD (64MB, 25% CPU, 10s timeout, signals)
+let aggressive = ChaosConfig::aggressive();
+
+// Custom configuration using renacer builder pattern
+let custom = ChaosConfig::new()
+    .with_memory_limit(128 * 1024 * 1024)  // 128MB
+    .with_cpu_limit(0.5)                   // 50% CPU
+    .with_timeout(Duration::from_secs(30))
+    .with_signal_injection(true)
+    .build();
+```
+
+**Chaos Features** (renacer pattern):
+- `chaos-basic`: Core chaos configuration and error types
+- `chaos-network`: Network failure simulation (planned)
+- `chaos-byzantine`: Byzantine fault injection (planned)
+- `chaos-full`: All chaos features combined
+
+**Commands**:
+```bash
+# Run chaos engineering tests (Tier 2)
+make chaos-test
+
+# Enable specific chaos features
+cargo test --features chaos-basic
+cargo test --features chaos-full
+```
+
+### Fuzz Testing
+
+Automated testing with libFuzzer to discover edge cases and crashes:
+
+```bash
+# Run fuzz tests for 60 seconds
+make fuzz
+
+# Extended fuzzing session
+cargo +nightly fuzz run fuzz_target_1 -- -max_total_time=300
+```
+
+The fuzz target tests `TruenoVec` operations:
+- Push/pop operations
+- Random access
+- Iterator operations
+- Invariant verification
+
+**Integration**: Chaos tests run in Tier 2 (ON-COMMIT) for fast feedback.
+
 ## PMAT Compliance
 
 This project is fully compliant with the **Pragmatic AI Labs Multi-Language Agent Toolkit (PMAT)** standards, enforcing **EXTREME TDD**:
@@ -296,6 +373,8 @@ make test               # Run all tests
 make test-quick         # Run unit tests only
 make test-property      # Run property-based tests
 make coverage           # Generate coverage report
+make chaos-test         # Chaos engineering tests (renacer)
+make fuzz               # Fuzz testing (60s)
 
 # Code quality
 make clippy             # Run clippy linter

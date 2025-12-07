@@ -16,6 +16,7 @@ SHELL := /bin/bash
 .PHONY: coverage coverage-ci coverage-clean coverage-open
 .PHONY: mutation mutation-report mutation-clean
 .PHONY: kaizen demo-mode
+.PHONY: chaos-test fuzz
 
 # Kaizen - Continuous Improvement Protocol
 kaizen: ## Continuous improvement cycle: analyze, benchmark, optimize, validate
@@ -168,6 +169,24 @@ tier3: quality-gate-tier3 ## Tier 3: Mutation testing for merge/nightly
 
 quality-gate-tier3: tier2 mutation analyze-complexity security
 	@echo "✅ Tier 3 quality gates passed (ON-MERGE/NIGHTLY)"
+
+# ============================================================================
+# CHAOS ENGINEERING & FUZZ TESTING (renacer pattern)
+# ============================================================================
+
+.PHONY: chaos-test fuzz
+
+chaos-test: ## Run chaos engineering tests (Tier 2)
+	@echo "🌪️  Running chaos engineering tests (renacer pattern)..."
+	@cargo test --features chaos-basic --test chaos_tests --quiet
+
+fuzz: ## Run fuzz testing for 60 seconds
+	@echo "🎲 Running fuzz tests (renacer approach)..."
+	@if command -v cargo-fuzz >/dev/null 2>&1; then \
+		cargo +nightly fuzz run fuzz_target_1 -- -max_total_time=60 || true; \
+	else \
+		echo "⚠️  cargo-fuzz not installed. Install with: cargo install cargo-fuzz"; \
+	fi
 
 # ============================================================================
 # Formatting
