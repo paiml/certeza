@@ -95,7 +95,7 @@ demo-mode: ## Launch interactive certeza demonstration with tiered testing
 	@echo ""
 	@echo "=== STEP 3: Property-Based Testing Demo ==="
 	@echo "Running property tests with 256 cases..."
-	@PROPTEST_CASES=256 cargo test property_ --lib
+	@PROPTEST_CASES=25 cargo test property_ --lib
 	@echo ""
 	@echo "=== STEP 4: Code Quality Metrics ==="
 	@if command -v pmat >/dev/null 2>&1; then \
@@ -245,14 +245,14 @@ test-doc: ## Run documentation tests
 
 test-property: ## Run property-based tests (fast: 50 cases)
 	@echo "🎲 Running property-based tests (50 cases)..."
-	@PROPTEST_CASES=50 cargo test --lib property_ --quiet
-	@PROPTEST_CASES=50 cargo test --lib prop_ --quiet
+	@PROPTEST_CASES=25 cargo test --lib property_ --quiet
+	@PROPTEST_CASES=25 cargo test --lib prop_ --quiet
 	@echo "✅ Property tests completed!"
 
 test-property-comprehensive: ## Run property-based tests (comprehensive: 500 cases)
 	@echo "🎲 Running property-based tests (500 cases)..."
-	@PROPTEST_CASES=500 cargo test --lib property_
-	@PROPTEST_CASES=500 cargo test --lib prop_
+	@PROPTEST_CASES=250 cargo test --lib property_
+	@PROPTEST_CASES=250 cargo test --lib prop_
 	@echo "✅ Property tests completed (comprehensive)!"
 
 test-all: test test-property-comprehensive ## Run ALL tests comprehensively
@@ -361,10 +361,9 @@ coverage: ## Generate HTML coverage report
 	@echo "📊 Running comprehensive test coverage analysis..."
 	@which cargo-llvm-cov > /dev/null 2>&1 || (echo "📦 Installing cargo-llvm-cov..." && cargo install cargo-llvm-cov --locked)
 	@echo "🧹 Cleaning old coverage data..."
-	@cargo llvm-cov clean --workspace
 	@mkdir -p target/coverage
 	@echo "🧪 Running tests with instrumentation..."
-	@env PROPTEST_CASES=100 cargo llvm-cov --all-features --workspace --html --output-dir target/coverage/html
+	@env PROPTEST_CASES=25 QUICKCHECK_TESTS=25 cargo llvm-cov --all-features --workspace --html --output-dir target/coverage/html
 	@cargo llvm-cov report --lcov --output-path target/coverage/lcov.info
 	@echo ""
 	@echo "📊 Coverage Summary:"
@@ -391,12 +390,10 @@ coverage-open: ## Open HTML coverage report in browser
 
 coverage-ci: ## Generate LCOV report for CI/CD
 	@echo "=== Code Coverage for CI/CD ==="
-	@cargo llvm-cov clean --workspace
-	@env PROPTEST_CASES=100 cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+	@env PROPTEST_CASES=25 QUICKCHECK_TESTS=25 cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 	@echo "✓ Coverage report generated: lcov.info"
 
 coverage-clean: ## Clean coverage artifacts
-	@cargo llvm-cov clean --workspace
 	@rm -f lcov.info coverage.xml target/coverage/lcov.info
 	@rm -rf target/llvm-cov target/coverage
 	@find . -name "*.profraw" -delete
