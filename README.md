@@ -19,6 +19,20 @@
 
 ---
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Tiered TDD-X Workflow](#tiered-tdd-x-workflow)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Usage Example](#usage-example)
+- [Chaos Engineering & Fuzz Testing](#chaos-engineering--fuzz-testing)
+- [PMAT Compliance](#pmat-compliance)
+- [Testing Framework](#testing-framework)
+- [Architecture](#architecture)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Overview
 
 certeza is a comprehensive framework for approaching **asymptotic test effectiveness** in Rust software systems through the pragmatic integration of:

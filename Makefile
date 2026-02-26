@@ -8,7 +8,7 @@ SHELL := /bin/bash
 # Override with: PROPTEST_CASES=n make <target>
 
 .PHONY: all validate quick-validate release clean help
-.PHONY: format format-check lint lint-check check test test-quick test-property test-property-comprehensive test-all
+.PHONY: format format-check lint lint-check check test test-fast test-quick test-property test-property-comprehensive test-all
 .PHONY: tier1 tier2 tier3
 .PHONY: quality-gate quality-baseline quality-report analyze-complexity analyze-tdg
 .PHONY: audit docs build install
@@ -231,6 +231,9 @@ check: ## Run cargo check
 test-quick: ## Run unit tests only (fast)
 	@echo "⚡ Running quick tests..."
 	@PROPTEST_CASES=10 cargo test --lib --quiet
+
+test-fast:
+	cargo test --lib
 
 test: test-doc test-property ## Run core test suite
 	@echo "✅ Core test suite completed!"

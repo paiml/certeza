@@ -891,6 +891,7 @@ impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         // Drop all remaining unconsumed elements
         while self.current < self.vec.len {
+            // SAFETY: current is bounded by vec.len, ptr is valid for vec.len elements
             unsafe {
                 ptr::drop_in_place(self.vec.ptr.as_ptr().add(self.current));
             }
@@ -900,6 +901,7 @@ impl<T> Drop for IntoIter<T> {
         // Now deallocate the memory (all elements have been dropped)
         if self.vec.capacity > 0 {
             let layout = Layout::array::<T>(self.vec.capacity).expect("capacity overflow");
+            // SAFETY: ptr was allocated with this layout and capacity > 0 guarantees valid alloc
             unsafe {
                 alloc::dealloc(self.vec.ptr.as_ptr().cast::<u8>(), layout);
             }
