@@ -60,3 +60,6 @@ panic = "abort"
 [profile.bench]
 # Benchmark optimizations
 lto = true
+
+[package.metadata.release]
+shared-version = true
