@@ -413,10 +413,9 @@ fn test_batch_processing_scenario() {
 #[test]
 fn test_undo_redo_scenario() {
     #[derive(Debug, Clone, PartialEq)]
-    #[allow(dead_code)]
     enum Action {
         Insert(char),
-        Delete,
+        _Delete,
     }
 
     let mut undo_stack = TruenoVec::new();
@@ -505,8 +504,7 @@ fn test_graph_adjacency_scenario() {
 fn test_ring_buffer_scenario() {
     struct RingBuffer<T> {
         buffer: TruenoVec<T>,
-        #[allow(dead_code)]
-        head: usize,
+        _head: usize,
         tail: usize,
         capacity: usize,
     }
@@ -515,7 +513,7 @@ fn test_ring_buffer_scenario() {
         fn new(capacity: usize) -> Self {
             Self {
                 buffer: TruenoVec::with_capacity(capacity),
-                head: 0,
+                _head: 0,
                 tail: 0,
                 capacity,
             }

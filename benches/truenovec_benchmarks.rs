@@ -9,7 +9,6 @@ use certeza::TruenoVec;
 use std::hint::black_box;
 
 /// Benchmark: Sequential push operations
-#[allow(dead_code)]
 fn bench_push_sequential(n: usize) -> std::time::Duration {
     let start = std::time::Instant::now();
     let mut vec = TruenoVec::new();
@@ -21,7 +20,6 @@ fn bench_push_sequential(n: usize) -> std::time::Duration {
 }
 
 /// Benchmark: Pre-allocated push operations
-#[allow(dead_code)]
 fn bench_push_preallocated(n: usize) -> std::time::Duration {
     let start = std::time::Instant::now();
     let mut vec = TruenoVec::with_capacity(n);
@@ -33,7 +31,6 @@ fn bench_push_preallocated(n: usize) -> std::time::Duration {
 }
 
 /// Benchmark: Pop operations
-#[allow(dead_code)]
 fn bench_pop(n: usize) -> std::time::Duration {
     let mut vec = TruenoVec::new();
     for i in 0..n {
@@ -49,7 +46,6 @@ fn bench_pop(n: usize) -> std::time::Duration {
 }
 
 /// Benchmark: Random access (get)
-#[allow(dead_code)]
 fn bench_get(n: usize) -> std::time::Duration {
     let mut vec = TruenoVec::new();
     for i in 0..n {
@@ -64,7 +60,6 @@ fn bench_get(n: usize) -> std::time::Duration {
 }
 
 /// Benchmark: Growth pattern analysis
-#[allow(dead_code)]
 fn bench_growth_pattern(n: usize) -> (usize, std::time::Duration) {
     let mut reallocation_count = 0;
     let mut prev_capacity = 0;
@@ -86,7 +81,6 @@ fn bench_growth_pattern(n: usize) -> (usize, std::time::Duration) {
 }
 
 /// Comparison benchmark: TruenoVec vs std::Vec
-#[allow(dead_code)]
 fn bench_comparison(n: usize) -> (std::time::Duration, std::time::Duration) {
     // TruenoVec
     let start = std::time::Instant::now();
