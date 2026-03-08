@@ -358,9 +358,7 @@ impl BenchmarkReport {
     ///
     /// Returns an error if file creation or writing fails
     pub fn to_json_file(&self, path: &std::path::Path) -> std::io::Result<()> {
-        let json = self
-            .to_json()
-            .map_err(std::io::Error::other)?;
+        let json = self.to_json().map_err(std::io::Error::other)?;
         std::fs::write(path, json)
     }
 

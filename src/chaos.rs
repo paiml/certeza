@@ -485,22 +485,14 @@ mod tests {
     // ChaosError tests
     #[test]
     fn test_memory_limit_exceeded_display() {
-        let error = ChaosError::MemoryLimitExceeded {
-            limit: 1024,
-            used: 2048,
-        };
-        assert_eq!(
-            format!("{error}"),
-            "Memory limit exceeded: 2048 > 1024 bytes"
-        );
+        let error = ChaosError::MemoryLimitExceeded { limit: 1024, used: 2048 };
+        assert_eq!(format!("{error}"), "Memory limit exceeded: 2048 > 1024 bytes");
     }
 
     #[test]
     fn test_timeout_display() {
-        let error = ChaosError::Timeout {
-            elapsed: Duration::from_secs(5),
-            limit: Duration::from_secs(3),
-        };
+        let error =
+            ChaosError::Timeout { elapsed: Duration::from_secs(5), limit: Duration::from_secs(3) };
         let display = format!("{error}");
         assert!(display.contains("Timeout"));
         assert!(display.contains("5s"));
@@ -513,19 +505,13 @@ mod tests {
             signal: 2,
             reason: "Process not found".to_string(),
         };
-        assert_eq!(
-            format!("{error}"),
-            "Signal injection failed (2): Process not found"
-        );
+        assert_eq!(format!("{error}"), "Signal injection failed (2): Process not found");
     }
 
     #[test]
     #[allow(clippy::redundant_clone)]
     fn test_chaos_error_clone() {
-        let error = ChaosError::MemoryLimitExceeded {
-            limit: 100,
-            used: 200,
-        };
+        let error = ChaosError::MemoryLimitExceeded { limit: 100, used: 200 };
         let cloned = error.clone();
         assert_eq!(&error, &cloned);
     }
@@ -553,10 +539,8 @@ mod tests {
 
     #[test]
     fn test_chaos_result_err() {
-        let result: ChaosResult<i32> = Err(ChaosError::MemoryLimitExceeded {
-            limit: 100,
-            used: 200,
-        });
+        let result: ChaosResult<i32> =
+            Err(ChaosError::MemoryLimitExceeded { limit: 100, used: 200 });
         assert!(result.is_err());
     }
 }

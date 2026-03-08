@@ -1,0 +1,34 @@
+{
+  "version": "1.4.0",
+  "built_at": "2026-03-08T02:46:58.472301379+00:00",
+  "project_root": "/home/noah/src/certeza",
+  "function_count": 211,
+  "file_count": 19,
+  "languages": [
+    "TypeScript",
+    "Rust"
+  ],
+  "avg_tdg_score": 0.105876766,
+  "file_checksums": {
+    "src/verification_specs.rs": "c5ceb7055f575591a1a9170aa00938e69c11a3fcb4797ac78f99ac31c3c50768",
+    "fuzz/fuzz_targets/fuzz_target_1.rs": "2a38be4ea158ffa9ea1c8499c8779010f21750a0a64b0e30d56bc8aa1c50ce46",
+    "scripts/generate_dashboard.ts": "97437af868f4add0eb04d842d321f27b26a6cd4bc645aec056c7428efb9de11f",
+    "src/benchmark/mod.rs": "d327ad22a9e1b1ec36c36bb9e75d3b1036a89d553eaca74c021ad9ef93785b8f",
+    "tests/chaos_tests.rs": "9fd153f86fb4759eeea0a897122684a93bb88103b32ba04a385cdb61d924a8dd",
+    "scripts/statistical_analysis.ts": "3c71a4e24443cbe320af6db09099734982ad067d2648d48c90ca1c58af712727",
+    "scripts/baseline_manager.ts": "50942412b352785bbe3ff95267a472ab6d81a8339ea1988126a93a11c70fa21c",
+    "scripts/generate_csv_report.ts": "39b5a26efef9d31c0e570967f974d851f9d4c8105c28cb921b1c1332bdbc31f7",
+    "scripts/generate_markdown_report.ts": "ffdfb0457b369cc4ee1eee07626d7641824aa2355dcd3aaa1213425319cd6e01",
+    "benches/truenovec_benchmarks.rs": "52e6f10aec6ae491bfc1359e6a1cd9daf164dcc4389623f50ef6c2628f38b027",
+    "src/vec.rs": "8207af7e8f1c17046ce96c044490aeae54886d3214e0e7b34d8c15ef73042b5e",
+    "src/lib.rs": "02662cb39dda53c8df188fe6ab574bf7326d0b146de91f1499bd2f3aeff02c91",
+    "src/benchmark/metadata.rs": "eb79bafc51c142de1668a24774e112d3eb0b3dfd26525a390ef0e89534eabaac",
+    "tests/property_test.rs": "d5e6bdc4c83dfed06a871737f8fff66a37e7e19b2ad8f0e21a95cb9c1a06d457",
+    "scripts/check_regression.ts": "5781bb4a99120fb098a815af61d09488f943f22739a308a6fd735fdf0ea07787",
+    "tests/integration_tests.rs": "05f9a6dfd189198a0079599e088bbb37863b7f39795192c87908fdb1f8b84602",
+    "src/chaos.rs": "ce404d10811d930f53d147a2fb3910fcbac7cc596d5141adf914d50fdf99bfa1",
+    "scripts/test_reporting.ts": "3351b196712f7034b6dfbce145f814bda344e02aced2bb89381b14a28b9e6c06",
+    "benches/vec_benchmarks.rs": "9dbc13d7f0e8806ac414bcc8aac49eb7c4c9865ad1cd5f6f0d19949b887f5166"
+  },
+  "last_incremental_changes": 0
+}

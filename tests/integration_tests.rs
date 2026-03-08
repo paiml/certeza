@@ -115,36 +115,18 @@ fn test_trueno_vec_with_complex_types() {
 
     let mut vec = TruenoVec::new();
 
-    vec.push(Person {
-        name: String::from("Alice"),
-        age: 30,
-    });
-    vec.push(Person {
-        name: String::from("Bob"),
-        age: 25,
-    });
+    vec.push(Person { name: String::from("Alice"), age: 30 });
+    vec.push(Person { name: String::from("Bob"), age: 25 });
 
     assert_eq!(vec.len(), 2);
-    assert_eq!(
-        vec.get(0),
-        Some(&Person {
-            name: String::from("Alice"),
-            age: 30,
-        })
-    );
+    assert_eq!(vec.get(0), Some(&Person { name: String::from("Alice"), age: 30 }));
 
     // Test mutation
     if let Some(person) = vec.get_mut(1) {
         person.age = 26;
     }
 
-    assert_eq!(
-        vec.get(1),
-        Some(&Person {
-            name: String::from("Bob"),
-            age: 26,
-        })
-    );
+    assert_eq!(vec.get(1), Some(&Person { name: String::from("Bob"), age: 26 }));
 }
 
 // ============================================================================
@@ -324,21 +306,9 @@ fn test_user_records_scenario() {
     let mut users = TruenoVec::new();
 
     // Add users dynamically
-    users.push(UserRecord {
-        id: 1,
-        name: "Alice".to_string(),
-        score: 100,
-    });
-    users.push(UserRecord {
-        id: 2,
-        name: "Bob".to_string(),
-        score: 85,
-    });
-    users.push(UserRecord {
-        id: 3,
-        name: "Charlie".to_string(),
-        score: 92,
-    });
+    users.push(UserRecord { id: 1, name: "Alice".to_string(), score: 100 });
+    users.push(UserRecord { id: 2, name: "Bob".to_string(), score: 85 });
+    users.push(UserRecord { id: 3, name: "Charlie".to_string(), score: 92 });
 
     assert_eq!(users.len(), 3);
 
@@ -512,12 +482,7 @@ fn test_ring_buffer_scenario() {
 
     impl<T: Clone> RingBuffer<T> {
         fn new(capacity: usize) -> Self {
-            Self {
-                buffer: TruenoVec::with_capacity(capacity),
-                _head: 0,
-                tail: 0,
-                capacity,
-            }
+            Self { buffer: TruenoVec::with_capacity(capacity), _head: 0, tail: 0, capacity }
         }
 
         fn push(&mut self, item: T) {

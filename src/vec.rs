@@ -106,12 +106,7 @@ impl<T> TruenoVec<T> {
     /// ```
     #[must_use]
     pub const fn new() -> Self {
-        Self {
-            ptr: NonNull::dangling(),
-            len: 0,
-            capacity: 0,
-            _marker: PhantomData,
-        }
+        Self { ptr: NonNull::dangling(), len: 0, capacity: 0, _marker: PhantomData }
     }
 
     /// Creates a new, empty `TruenoVec<T>` with the specified capacity.
@@ -154,12 +149,7 @@ impl<T> TruenoVec<T> {
                 let ptr = alloc::alloc(layout).cast::<T>();
                 NonNull::new(ptr).expect("allocation failed")
             };
-            Self {
-                ptr,
-                len: 0,
-                capacity,
-                _marker: PhantomData,
-            }
+            Self { ptr, len: 0, capacity, _marker: PhantomData }
         }
     }
 
@@ -547,12 +537,9 @@ impl<T> TruenoVec<T> {
             let old_layout = Layout::array::<T>(self.capacity).expect("capacity overflow");
             // SAFETY: ptr is valid, old_layout matches the current allocation
             unsafe {
-                let ptr = alloc::realloc(
-                    self.ptr.as_ptr().cast::<u8>(),
-                    old_layout,
-                    new_layout.size(),
-                )
-                .cast::<T>();
+                let ptr =
+                    alloc::realloc(self.ptr.as_ptr().cast::<u8>(), old_layout, new_layout.size())
+                        .cast::<T>();
                 NonNull::new(ptr).expect("allocation failed")
             }
         };
@@ -999,10 +986,7 @@ impl<T> IntoIterator for TruenoVec<T> {
     /// assert_eq!(sum, 6);
     /// ```
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter {
-            vec: self,
-            current: 0,
-        }
+        IntoIter { vec: self, current: 0 }
     }
 }
 

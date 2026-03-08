@@ -136,9 +136,7 @@ fn main() {
         println!("  Get (random access): {duration:?}");
 
         let (reallocs, duration) = bench_growth_pattern(n);
-        println!(
-            "  Growth pattern: {reallocs} reallocations, {duration:?}"
-        );
+        println!("  Growth pattern: {reallocs} reallocations, {duration:?}");
 
         println!();
     }
@@ -215,10 +213,7 @@ mod bench_tests {
 
         // With 2x growth factor, expect approximately log2(10000) ≈ 14 reallocations
         // Allow some margin for the initial growth from 0
-        assert!(
-            realloc_count <= 15,
-            "Expected ~14 reallocations, got {realloc_count}"
-        );
+        assert!(realloc_count <= 15, "Expected ~14 reallocations, got {realloc_count}");
     }
 
     #[test]
@@ -232,10 +227,7 @@ mod bench_tests {
         let ratio = trueno_time.as_nanos() as f64 / std_time.as_nanos() as f64;
         println!("Performance ratio (TruenoVec/std::Vec): {ratio:.2}x");
 
-        assert!(
-            ratio < 5.0,
-            "TruenoVec significantly slower than std::Vec ({ratio}x)"
-        );
+        assert!(ratio < 5.0, "TruenoVec significantly slower than std::Vec ({ratio}x)");
     }
 
     #[test]
@@ -262,10 +254,7 @@ mod bench_tests {
         println!("Average push cost (n={n}): {avg_nanos} ns/op");
 
         // Should be amortized O(1) - expect under 100ns per operation on modern hardware
-        assert!(
-            avg_nanos < 1000,
-            "Average push cost too high: {avg_nanos} ns"
-        );
+        assert!(avg_nanos < 1000, "Average push cost too high: {avg_nanos} ns");
     }
 
     #[test]
