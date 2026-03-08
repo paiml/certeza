@@ -243,6 +243,7 @@ jobs:
           path: benchmarks
 
       - name: Generate markdown report
+        continue-on-error: true
         run: |
           deno run --allow-read --allow-write \
             scripts/generate_markdown_report.ts \
@@ -250,6 +251,7 @@ jobs:
             benchmarks/results/report.md
 
       - name: Generate CSV reports
+        continue-on-error: true
         run: |
           deno run --allow-read --allow-write \
             scripts/generate_csv_report.ts \
@@ -293,6 +295,7 @@ jobs:
           path: benchmarks
 
       - name: Update main baseline
+        continue-on-error: true
         run: |
           mkdir -p benchmarks/baselines
 
