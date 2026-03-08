@@ -6,5 +6,13 @@
     "git_branch": "main",
     "total_benchmarks": 3,
     "description": "Test baseline for validation"
+  },
+  {
+    "name": "main",
+    "created": "2026-03-08T03:10:59.942Z",
+    "git_commit": "dcb4f50",
+    "git_branch": "main",
+    "total_benchmarks": 0,
+    "description": "Main branch baseline (auto-updated)"
   }
 ]
