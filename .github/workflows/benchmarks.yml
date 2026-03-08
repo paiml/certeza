@@ -119,6 +119,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: benchmark-results
+          path: benchmarks
 
       - name: Download baseline from main branch
         run: |
@@ -239,6 +240,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: benchmark-results
+          path: benchmarks
 
       - name: Generate markdown report
         run: |
@@ -288,6 +290,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: benchmark-results
+          path: benchmarks
 
       - name: Update main baseline
         run: |
@@ -337,6 +340,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: benchmark-results
+          path: benchmarks
 
       - name: Download reports
         uses: actions/download-artifact@v4

@@ -45,7 +45,7 @@ jobs:
             benchmark-baseline-main
 
       - name: Run benchmarks
-        run: cargo bench --bench truenovec_benchmarks -- --save-baseline current
+        run: cargo bench --bench vec_benchmarks -- --save-baseline current
 
       - name: Compare against baseline
         id: compare
