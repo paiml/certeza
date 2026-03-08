@@ -280,7 +280,7 @@ impl ChaosConfig {
     /// assert_eq!(negative.cpu_limit, 0.0);
     /// ```
     #[must_use]
-    pub fn with_cpu_limit(mut self, fraction: f64) -> Self {
+    pub const fn with_cpu_limit(mut self, fraction: f64) -> Self {
         self.cpu_limit = fraction.clamp(0.0, 1.0);
         self
     }

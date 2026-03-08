@@ -360,7 +360,7 @@ impl BenchmarkReport {
     pub fn to_json_file(&self, path: &std::path::Path) -> std::io::Result<()> {
         let json = self
             .to_json()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
         std::fs::write(path, json)
     }
 
