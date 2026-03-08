@@ -1560,6 +1560,7 @@ impl<T> std::borrow::BorrowMut<[T]> for TruenoVec<T> {
 // ============================================================================
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::disallowed_methods)]
 mod tests {
     use super::*;
 
@@ -4058,6 +4059,7 @@ mod tests {
 // ============================================================================
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::disallowed_methods)]
 mod property_tests {
     use super::*;
     use proptest::prelude::*;

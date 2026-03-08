@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::disallowed_methods)]
 //! Integration Tests for certeza
 //!
 //! These tests verify the public API of the certeza crate works correctly
@@ -597,7 +598,7 @@ fn test_type_safety_scenario() {
 }
 
 /// Test scenario: Concurrent safety verification (compile-time)
-/// This test verifies that TruenoVec is Send + Sync where appropriate
+/// This test verifies that `TruenoVec` is Send + Sync where appropriate
 #[test]
 fn test_thread_safety_compile_time() {
     fn assert_send<T: Send>() {}

@@ -1,7 +1,8 @@
-//! Performance benchmarks for TruenoVec
+#![allow(clippy::cast_precision_loss)]
+//! Performance benchmarks for `TruenoVec`
 //!
-//! These benchmarks measure the performance characteristics of TruenoVec
-//! operations and compare them against std::Vec where applicable.
+//! These benchmarks measure the performance characteristics of `TruenoVec`
+//! operations and compare them against `std::Vec` where applicable.
 //!
 //! Run with: `cargo bench`
 
@@ -80,7 +81,7 @@ fn bench_growth_pattern(n: usize) -> (usize, std::time::Duration) {
     (reallocation_count, elapsed)
 }
 
-/// Comparison benchmark: TruenoVec vs std::Vec
+/// Comparison benchmark: `TruenoVec` vs `std::Vec`
 fn bench_comparison(n: usize) -> (std::time::Duration, std::time::Duration) {
     // TruenoVec
     let start = std::time::Instant::now();
@@ -120,24 +121,23 @@ fn main() {
     let sizes = [100, 1_000, 10_000, 100_000];
 
     for &n in &sizes {
-        println!("--- Benchmark size: {} ---", n);
+        println!("--- Benchmark size: {n} ---");
 
         let duration = bench_push_sequential(n);
-        println!("  Push sequential: {:?}", duration);
+        println!("  Push sequential: {duration:?}");
 
         let duration = bench_push_preallocated(n);
-        println!("  Push preallocated: {:?}", duration);
+        println!("  Push preallocated: {duration:?}");
 
         let duration = bench_pop(n);
-        println!("  Pop: {:?}", duration);
+        println!("  Pop: {duration:?}");
 
         let duration = bench_get(n);
-        println!("  Get (random access): {:?}", duration);
+        println!("  Get (random access): {duration:?}");
 
         let (reallocs, duration) = bench_growth_pattern(n);
         println!(
-            "  Growth pattern: {} reallocations, {:?}",
-            reallocs, duration
+            "  Growth pattern: {reallocs} reallocations, {duration:?}"
         );
 
         println!();
@@ -148,8 +148,7 @@ fn main() {
         let (trueno_time, std_time) = bench_comparison(n);
         let ratio = trueno_time.as_nanos() as f64 / std_time.as_nanos() as f64;
         println!(
-            "  n={}: TruenoVec {:?} vs std::Vec {:?} (ratio: {:.2}x)",
-            n, trueno_time, std_time, ratio
+            "  n={n}: TruenoVec {trueno_time:?} vs std::Vec {std_time:?} (ratio: {ratio:.2}x)"
         );
     }
 }
@@ -161,21 +160,21 @@ mod bench_tests {
     #[test]
     fn test_push_sequential_small() {
         let duration = bench_push_sequential(100);
-        println!("Push sequential (n=100): {:?}", duration);
+        println!("Push sequential (n=100): {duration:?}");
         assert!(duration.as_millis() < 10); // Should be very fast
     }
 
     #[test]
     fn test_push_sequential_medium() {
         let duration = bench_push_sequential(1_000);
-        println!("Push sequential (n=1000): {:?}", duration);
+        println!("Push sequential (n=1000): {duration:?}");
         assert!(duration.as_millis() < 50);
     }
 
     #[test]
     fn test_push_sequential_large() {
         let duration = bench_push_sequential(10_000);
-        println!("Push sequential (n=10000): {:?}", duration);
+        println!("Push sequential (n=10000): {duration:?}");
         assert!(duration.as_millis() < 100);
     }
 
@@ -184,8 +183,8 @@ mod bench_tests {
         let sequential_time = bench_push_sequential(10_000);
         let preallocated_time = bench_push_preallocated(10_000);
 
-        println!("Sequential: {:?}", sequential_time);
-        println!("Preallocated: {:?}", preallocated_time);
+        println!("Sequential: {sequential_time:?}");
+        println!("Preallocated: {preallocated_time:?}");
 
         // Both should complete successfully
         // Preallocated typically faster (no reallocations) but allow variance
@@ -197,47 +196,45 @@ mod bench_tests {
     #[test]
     fn test_pop_performance() {
         let duration = bench_pop(10_000);
-        println!("Pop (n=10000): {:?}", duration);
+        println!("Pop (n=10000): {duration:?}");
         assert!(duration.as_millis() < 100);
     }
 
     #[test]
     fn test_get_performance() {
         let duration = bench_get(10_000);
-        println!("Get (n=10000 accesses): {:?}", duration);
+        println!("Get (n=10000 accesses): {duration:?}");
         assert!(duration.as_micros() < 50_000); // Should be very fast (O(1))
     }
 
     #[test]
     fn test_growth_pattern_logarithmic() {
         let (realloc_count, duration) = bench_growth_pattern(10_000);
-        println!("Reallocations for n=10000: {}", realloc_count);
-        println!("Time: {:?}", duration);
+        println!("Reallocations for n=10000: {realloc_count}");
+        println!("Time: {duration:?}");
 
         // With 2x growth factor, expect approximately log2(10000) ≈ 14 reallocations
         // Allow some margin for the initial growth from 0
         assert!(
             realloc_count <= 15,
-            "Expected ~14 reallocations, got {}",
-            realloc_count
+            "Expected ~14 reallocations, got {realloc_count}"
         );
     }
 
     #[test]
     fn test_comparison_competitive() {
         let (trueno_time, std_time) = bench_comparison(10_000);
-        println!("TruenoVec time: {:?}", trueno_time);
-        println!("std::Vec time: {:?}", std_time);
+        println!("TruenoVec time: {trueno_time:?}");
+        println!("std::Vec time: {std_time:?}");
 
         // TruenoVec should be competitive with std::Vec
         // Allow up to 3x slower (we're custom implementation vs highly optimized std)
         let ratio = trueno_time.as_nanos() as f64 / std_time.as_nanos() as f64;
-        println!("Performance ratio (TruenoVec/std::Vec): {:.2}x", ratio);
+        println!("Performance ratio (TruenoVec/std::Vec): {ratio:.2}x");
 
         assert!(
             ratio < 5.0,
-            "TruenoVec significantly slower than std::Vec ({}x)",
-            ratio
+            "TruenoVec significantly slower than std::Vec ({ratio}x)"
         );
     }
 
@@ -248,11 +245,11 @@ mod bench_tests {
         let vec = TruenoVec::<i32>::new();
         let size = mem::size_of_val(&vec);
 
-        println!("TruenoVec<i32> size: {} bytes", size);
+        println!("TruenoVec<i32> size: {size} bytes");
 
         // Should be 3 word-sized fields (ptr, len, capacity) + PhantomData (0 size)
         // On 64-bit: 24 bytes minimum, but may be 32 with padding
-        assert!(size <= 32, "Unexpected memory overhead: {} bytes", size);
+        assert!(size <= 32, "Unexpected memory overhead: {size} bytes");
     }
 
     #[test]
@@ -262,13 +259,12 @@ mod bench_tests {
         let duration = bench_push_sequential(n);
         let avg_nanos = duration.as_nanos() / n as u128;
 
-        println!("Average push cost (n={}): {} ns/op", n, avg_nanos);
+        println!("Average push cost (n={n}): {avg_nanos} ns/op");
 
         // Should be amortized O(1) - expect under 100ns per operation on modern hardware
         assert!(
             avg_nanos < 1000,
-            "Average push cost too high: {} ns",
-            avg_nanos
+            "Average push cost too high: {avg_nanos} ns"
         );
     }
 
@@ -296,8 +292,8 @@ mod bench_tests {
         }
         let random_time = start.elapsed();
 
-        println!("Sequential access: {:?}", sequential_time);
-        println!("Random access: {:?}", random_time);
+        println!("Sequential access: {sequential_time:?}");
+        println!("Random access: {random_time:?}");
 
         // Both should be fast due to O(1) access, but sequential might be slightly faster
         assert!(sequential_time.as_micros() < 10_000);
