@@ -775,7 +775,8 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = (self.end as usize - self.ptr as usize) / std::mem::size_of::<T>();
+        let size = std::mem::size_of::<T>();
+        let len = if size == 0 { 0 } else { (self.end as usize - self.ptr as usize) / size };
         (len, Some(len))
     }
 }
@@ -822,7 +823,8 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = (self.end as usize - self.ptr as usize) / std::mem::size_of::<T>();
+        let size = std::mem::size_of::<T>();
+        let len = if size == 0 { 0 } else { (self.end as usize - self.ptr as usize) / size };
         (len, Some(len))
     }
 }
