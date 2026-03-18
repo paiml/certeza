@@ -296,7 +296,12 @@ pub struct BenchmarkSummary {
 impl BenchmarkReport {
     /// Create a new benchmark report with default values
     #[must_use]
-    pub fn new(_suite_name: &str, metadata: BenchmarkMetadata) -> Self {
+    pub fn new(suite_name: &str, metadata: BenchmarkMetadata) -> Self {
+        // GH-18: Use suite_name to override metadata.benchmark_suite if it differs
+        let mut metadata = metadata;
+        if metadata.benchmark_suite.is_empty() && !suite_name.is_empty() {
+            metadata.benchmark_suite = suite_name.to_string();
+        }
         Self {
             schema_version: "1.0".to_string(),
             metadata,
@@ -322,9 +327,8 @@ impl BenchmarkReport {
     /// Update summary statistics
     fn update_summary(&mut self) {
         self.summary.total_benchmarks = self.benchmarks.len();
-        self.summary.successful = self.benchmarks.len(); // Assuming all added are successful
 
-        // Count significant changes
+        // Count significant changes and failed benchmarks
         let mut improvements = 0;
         let mut regressions = 0;
 
@@ -338,6 +342,14 @@ impl BenchmarkReport {
                 }
             }
         }
+
+        // GH-18: Compute failed count (benchmarks with significant regressions)
+        self.summary.failed = regressions;
+        self.summary.successful = self.benchmarks.len().saturating_sub(regressions);
+
+        // GH-18: Compute total runtime from individual benchmark mean times
+        self.summary.total_runtime_seconds =
+            self.benchmarks.iter().map(|b| b.measurements.statistics.mean_ms / 1000.0).sum();
 
         self.summary.significant_improvements = improvements;
         self.summary.significant_regressions = regressions;
