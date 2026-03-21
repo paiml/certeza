@@ -523,7 +523,7 @@ Contributions are welcome! Please ensure:
 
 ## See Also
 
-- [Cookbook](https://github.com/paiml/sovereign-ai-cookbook)
+- [Cookbook](examples/) — 1 runnable example
 
 ## License
 
