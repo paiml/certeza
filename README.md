@@ -1,5 +1,6 @@
 <div align="center">
 [![Crates.io](https://img.shields.io/crates/v/certeza.svg)](https://crates.io/crates/certeza)
+[![Documentation](https://docs.rs/certeza/badge.svg)](https://docs.rs/certeza)
 
 <p align="center">
   <img src=".github/certeza-hero.svg" alt="certeza" width="800">
@@ -519,6 +520,10 @@ Contributions are welcome! Please ensure:
 3. Clippy passes: `make clippy-strict`
 4. Code is formatted: `cargo fmt`
 5. No SATD comments (TODO/FIXME/HACK)
+
+## See Also
+
+- [Cookbook](https://github.com/paiml/sovereign-ai-cookbook)
 
 ## License
 
