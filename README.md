@@ -1,4 +1,5 @@
 <div align="center">
+[![Crates.io](https://img.shields.io/crates/v/certeza.svg)](https://crates.io/crates/certeza)
 
 <p align="center">
   <img src=".github/certeza-hero.svg" alt="certeza" width="800">
