@@ -45,6 +45,14 @@ certeza is a comprehensive framework for approaching **asymptotic test effective
 - **Structural coverage analysis** (using cargo-llvm-cov)
 - **Selective formal verification** (using Kani)
 
+## Features
+
+- Tiered TDD-X workflow (ON-SAVE, ON-COMMIT, ON-MERGE)
+- Property-based and mutation testing integration
+- LLVM-based structural coverage analysis
+- Formal verification with Kani bounded model checking
+- Reproducible verification methodology
+
 ### Philosophy
 
 While complete verification remains theoretically impossible (Dijkstra: "testing can only prove the presence of bugs, not their absence"), this framework provides a reproducible methodology for achieving practical maximum confidence in critical systems.
