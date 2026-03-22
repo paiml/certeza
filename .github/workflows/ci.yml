@@ -5,6 +5,7 @@ on:
     branches: [ main, master, develop ]
   pull_request:
     branches: [ main, master, develop ]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,7 +18,7 @@ jobs:
   # ============================================================================
   tier1:
     name: "Tier 1: Quick Checks"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, clean-room]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -59,7 +60,7 @@ jobs:
   # ============================================================================
   tier2:
     name: "Tier 2: Full Test Suite"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, clean-room]
     needs: tier1
     steps:
       - name: Checkout code
@@ -105,10 +106,10 @@ jobs:
           COVERAGE=$(cargo llvm-cov --all-features --workspace --summary-only | grep "TOTAL" | awk '{print $10}' | sed 's/%//')
           echo "Coverage: $COVERAGE%"
           if [ "$(echo "$COVERAGE < 85" | bc)" -eq 1 ]; then
-            echo "❌ Coverage $COVERAGE% is below 85% threshold"
+            echo "Coverage $COVERAGE% is below 85% threshold"
             exit 1
           fi
-          echo "✓ Coverage $COVERAGE% meets 85% threshold"
+          echo "Coverage $COVERAGE% meets 85% threshold"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
@@ -156,7 +157,7 @@ jobs:
   # ============================================================================
   tier3-mutation:
     name: "Tier 3: Mutation Testing"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, clean-room]
     needs: tier2
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
@@ -203,7 +204,7 @@ jobs:
   # ============================================================================
   pmat-quality:
     name: "PMAT Quality Gates"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, clean-room]
     needs: tier2
     if: false  # Disabled until PMAT is installed in CI
     steps:
@@ -227,3 +228,15 @@ jobs:
 
       - name: Technical debt grading
         run: pmat analyze tdg
+
+  gate:
+    name: gate
+    runs-on: [self-hosted, clean-room]
+    if: always()
+    needs: [tier1, tier2, security]
+    steps:
+      - name: Check all jobs
+        run: |
+          if [ "${{ needs.tier1.result }}" = "failure" ] || [ "${{ needs.tier2.result }}" = "failure" ]; then
+            exit 1
+          fi
