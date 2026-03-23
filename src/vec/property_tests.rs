@@ -1,6 +1,6 @@
 #[allow(clippy::unwrap_used, clippy::disallowed_methods)]
 mod property_tests {
-    use super::*;
+    use super::super::*;
     use proptest::prelude::*;
 
     // Property 1: Length Invariant

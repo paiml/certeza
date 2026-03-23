@@ -1548,8 +1548,8 @@ impl<T> std::borrow::BorrowMut<[T]> for TruenoVec<T> {
 
 #[cfg(test)]
 #[path = "tests.rs"]
-mod tests;
+mod vec_tests;
 
 #[cfg(test)]
 #[path = "property_tests.rs"]
-mod property_tests;
+mod vec_property_tests;

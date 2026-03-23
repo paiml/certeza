@@ -1,6 +1,6 @@
 #[allow(clippy::unwrap_used, clippy::disallowed_methods)]
 mod tests {
-    use super::*;
+    use super::super::*;
 
     #[test]
     fn test_new() {

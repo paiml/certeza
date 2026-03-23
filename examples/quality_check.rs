@@ -1,7 +1,7 @@
 //! Demonstrates the certeza testing-effectiveness framework.
 //!
 //! This example showcases:
-//! - TruenoVec: a verified growable vector
+//! - `TruenoVec`: a verified growable vector
 //! - Chaos engineering configuration
 //! - Basic arithmetic functions with property-tested guarantees
 //!
