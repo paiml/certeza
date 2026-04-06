@@ -19,7 +19,10 @@ pub mod config_contracts {
     /// #[ensures(result == true ==> size <= max)]
     /// #[ensures(result == false ==> size > max)]
     pub fn validate_size(size: usize, max: usize) -> bool {
-        size <= max
+        contract_pre_configuration!();
+        let result = size <= max;
+        contract_post_configuration!(&"ok");
+        result
     }
 
     /// Validate index within bounds
@@ -28,6 +31,7 @@ pub mod config_contracts {
     /// #[ensures(result == true ==> index < len)]
     /// #[ensures(result == false ==> index >= len)]
     pub fn validate_index(index: usize, len: usize) -> bool {
+        contract_pre_configuration!();
         index < len
     }
 

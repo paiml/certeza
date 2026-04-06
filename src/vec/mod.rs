@@ -1545,7 +1545,6 @@ impl<T> std::borrow::BorrowMut<[T]> for TruenoVec<T> {
 // Unit Tests (Tier 1: Sub-second feedback)
 // ============================================================================
 
-
 #[cfg(test)]
 #[path = "tests.rs"]
 mod vec_tests;

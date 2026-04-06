@@ -56,6 +56,10 @@
 #![warn(clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
 
+#[macro_use]
+#[allow(unused_macros)]
+mod generated_contracts;
+
 pub mod benchmark;
 pub mod chaos;
 pub mod vec;
